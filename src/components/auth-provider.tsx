@@ -63,23 +63,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 : null
 
             if (session?.user) {
-                const { data: profileData, error } = await supabase
-                    .from('profiles')
-                    .select('*')
-                    .eq('id', session.user.id)
-                    .single<Profile>()
+                try {
+                    // Add timeout to profile fetch to prevent hanging
+                    const fetchProfile = supabase
+                        .from('profiles')
+                        .select('*')
+                        .eq('id', session.user.id)
+                        .single<Profile>()
 
-                if (!isMounted) return
+                    const timeoutPromise = new Promise<{ data: null, error: { message: string } }>((resolve) => {
+                        setTimeout(() => resolve({ data: null, error: { message: 'Timeout' } }), 5000)
+                    })
 
-                if (error) {
-                    console.warn('Failed to load profile, using metadata fallback', error)
+                    const { data: profileData, error } = await Promise.race([fetchProfile, timeoutPromise])
+
+                    if (!isMounted) return
+
+                    if (error) {
+                        console.warn('Failed to load profile (or timed out), using metadata fallback', error)
+                        setProfile(fallbackProfile)
+                    } else {
+                        const normalizedDbRole = normalizeRole(profileData?.role)
+                        const mergedProfile = profileData && normalizedDbRole
+                            ? { ...profileData, role: normalizedDbRole }
+                            : fallbackProfile
+                        setProfile(mergedProfile)
+                    }
+                } catch (err) {
+                    console.error('Unexpected error loading profile:', err)
                     setProfile(fallbackProfile)
-                } else {
-                    const normalizedDbRole = normalizeRole(profileData?.role)
-                    const mergedProfile = profileData && normalizedDbRole
-                        ? { ...profileData, role: normalizedDbRole }
-                        : fallbackProfile
-                    setProfile(mergedProfile)
                 }
             } else {
                 setProfile(null)

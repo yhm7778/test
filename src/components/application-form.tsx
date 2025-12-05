@@ -105,8 +105,8 @@ export default function ApplicationForm() {
                 photoUrls.push(publicUrl)
             }
 
-            // Insert application
-            const { error: insertError } = await supabase
+            // Insert application with timeout
+            const insertPromise = supabase
                 .from('applications')
                 .insert({
                     user_id: user?.id || null,
@@ -117,6 +117,13 @@ export default function ApplicationForm() {
                     notes: `블로그 리뷰 갯수: ${sanitizeHtml(blogCount.trim())}개\n주의사항 확인 및 동의 완료`,
                     photo_urls: photoUrls,
                 })
+
+            const { error: insertError } = await Promise.race([
+                insertPromise,
+                new Promise<{ error: any }>((_, reject) =>
+                    setTimeout(() => reject(new Error('신청서 제출이 지연되고 있습니다. 잠시 후 다시 시도해주세요.')), 20000)
+                )
+            ])
 
             if (insertError) throw insertError
 

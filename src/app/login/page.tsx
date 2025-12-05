@@ -49,14 +49,15 @@ export default function LoginPage() {
 
             if (error) throw error
 
-            // Force full page reload to ensure session is properly set
-            window.location.href = '/'
+            // Use router for navigation instead of hard reload
+            router.refresh()
+            router.replace('/')
         } catch (error: unknown) {
             const message = error instanceof Error ? error.message : 'Unknown error'
             setError(getKoreanErrorMessage(message))
-        } finally {
-            setIsLoading(false)
+            setIsLoading(false) // Ensure loading state is reset on error
         }
+        // Removed finally block to prevent flickering if redirecting
     }
 
     const handleSignUp = async () => {
