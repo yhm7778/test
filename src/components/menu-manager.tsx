@@ -3,8 +3,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { Plus, Trash2, Save, X, Edit2, Menu } from 'lucide-react'
+import { Database } from '@/types/supabase'
 
-interface MenuItem {
+type MenuItemRow = Database['public']['Tables']['menu_items']['Row']
+type MenuItemInsert = Database['public']['Tables']['menu_items']['Insert']
+type MenuItemUpdate = Database['public']['Tables']['menu_items']['Update']
+
+type MenuForm = {
     id?: string
     label: string
     href: string
@@ -12,9 +17,9 @@ interface MenuItem {
 }
 
 export default function MenuManager() {
-    const [menuItems, setMenuItems] = useState<MenuItem[]>([])
+    const [menuItems, setMenuItems] = useState<MenuItemRow[]>([])
     const [editingId, setEditingId] = useState<string | null>(null)
-    const [editForm, setEditForm] = useState<MenuItem>({ label: '', href: '', order: 0 })
+    const [editForm, setEditForm] = useState<MenuForm>({ label: '', href: '', order: 0 })
     const [isAdding, setIsAdding] = useState(false)
     const supabase = createClient()
 
@@ -28,13 +33,15 @@ export default function MenuManager() {
             if (error && error.code !== 'PGRST116') { // Table doesn't exist
                 console.error('Error loading menu items:', error)
                 // Initialize with default items if table doesn't exist
-                setMenuItems([
-                    { label: '홈', href: '/', order: 1 },
-                    { label: '서비스 소개', href: '/about', order: 2 },
-                    { label: '문의하기', href: '/contact', order: 3 },
-                ])
+                const now = new Date().toISOString()
+                const fallback: MenuItemRow[] = [
+                    { id: 'fallback-1', label: '홈', href: '/', order: 1, created_at: now },
+                    { id: 'fallback-2', label: '서비스 소개', href: '/about', order: 2, created_at: now },
+                    { id: 'fallback-3', label: '문의하기', href: '/contact', order: 3, created_at: now },
+                ]
+                setMenuItems(fallback)
             } else {
-                setMenuItems(data || [])
+                setMenuItems((data ?? []) as MenuItemRow[])
             }
         } catch (error) {
             console.error('Error loading menu items:', error)
@@ -49,17 +56,29 @@ export default function MenuManager() {
         try {
             if (editingId) {
                 // Update existing item
+                const updatePayload: MenuItemUpdate = {
+                    label: editForm.label,
+                    href: editForm.href,
+                    order: editForm.order,
+                }
+
                 const { error } = await supabase
                     .from('menu_items')
-                    .update(editForm)
+                    .update(updatePayload)
                     .eq('id', editingId)
 
                 if (error) throw error
             } else {
                 // Create new item
+                const insertPayload: MenuItemInsert = {
+                    label: editForm.label,
+                    href: editForm.href,
+                    order: editForm.order,
+                }
+
                 const { error } = await supabase
                     .from('menu_items')
-                    .insert([editForm])
+                    .insert([insertPayload])
 
                 if (error) throw error
             }
@@ -98,9 +117,14 @@ export default function MenuManager() {
         }
     }
 
-    const startEdit = (item: MenuItem) => {
+    const startEdit = (item: MenuItemRow) => {
         setEditingId(item.id || null)
-        setEditForm(item)
+        setEditForm({
+            id: item.id,
+            label: item.label,
+            href: item.href,
+            order: item.order,
+        })
         setIsAdding(false)
     }
 

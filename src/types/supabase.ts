@@ -72,6 +72,54 @@ export interface Database {
         }
         Relationships: []
       }
+      staff_requests: {
+        Row: {
+          id: string
+          email: string
+          name: string | null
+          status: 'pending' | 'approved' | 'rejected'
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          email: string
+          name?: string | null
+          status?: 'pending' | 'approved' | 'rejected'
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          email?: string
+          name?: string | null
+          status?: 'pending' | 'approved' | 'rejected'
+          created_at?: string
+        }
+        Relationships: []
+      }
+      menu_items: {
+        Row: {
+          id: string
+          label: string
+          href: string
+          order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          label: string
+          href: string
+          order?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          label?: string
+          href?: string
+          order?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: Record<string, never>

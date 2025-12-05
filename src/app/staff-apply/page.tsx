@@ -5,6 +5,9 @@ import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Mail, User, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
+import { Database } from '@/types/supabase'
+
+type StaffRequestInsert = Database['public']['Tables']['staff_requests']['Insert']
 
 export default function StaffApplyPage() {
     const [formData, setFormData] = useState({ email: '', name: '' })
@@ -32,13 +35,15 @@ export default function StaffApplyPage() {
             const email = formData.email || user.email || ''
 
             // Create staff request
+            const payload: StaffRequestInsert = {
+                email,
+                name: formData.name || null,
+                status: 'pending',
+            }
+
             const { error } = await supabase
                 .from('staff_requests')
-                .insert([{
-                    email: email,
-                    name: formData.name || null,
-                    status: 'pending',
-                }])
+                .insert([payload])
 
             if (error) {
                 if (error.code === '23505') { // Duplicate key

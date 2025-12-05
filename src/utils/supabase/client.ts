@@ -33,9 +33,10 @@ export function createClient() {
 
                     // Set max-age if provided (0 should remove the cookie)
                     if (options && Object.prototype.hasOwnProperty.call(options, 'maxAge')) {
-                        cookie += `; max-age=${options.maxAge}`
+                        const maxAge = options.maxAge ?? 0
+                        cookie += `; max-age=${maxAge}`
                         // Ensure immediate removal when maxAge is 0 or less
-                        if (options.maxAge <= 0) {
+                        if (maxAge <= 0) {
                             cookie += '; expires=Thu, 01 Jan 1970 00:00:00 GMT'
                         }
                     } else {

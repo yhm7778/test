@@ -1,9 +1,13 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import ApplicationList from '@/components/application-list'
+import { Database } from '@/types/supabase'
+import type { SupabaseClient } from '@supabase/supabase-js'
+
+type ApplicationRow = Database['public']['Tables']['applications']['Row']
 
 export default async function MyPage() {
-    const supabase = await createClient()
+    const supabase = await createClient() as SupabaseClient<Database>
 
     const { data: { user } } = await supabase.auth.getUser()
 
@@ -11,11 +15,12 @@ export default async function MyPage() {
         redirect('/login')
     }
 
-    const { data: applications } = await supabase
+    const applicationsResponse = await supabase
         .from('applications')
         .select('*')
-        .eq('user_id', user.id)
+        .eq<'user_id'>('user_id', user.id)
         .order('created_at', { ascending: false })
+    const applications = (applicationsResponse.data ?? []) as ApplicationRow[]
 
     return (
         <div className="py-8 animate-slide-up">
@@ -34,7 +39,7 @@ export default async function MyPage() {
             
             {/* 컨텐츠 영역 */}
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
-                <ApplicationList initialApplications={applications || []} isAdmin={false} />
+                <ApplicationList initialApplications={applications} isAdmin={false} />
             </div>
         </div>
     )

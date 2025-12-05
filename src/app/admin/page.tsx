@@ -1,12 +1,17 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import AdminTabs from '@/components/admin-tabs'
+import { Database } from '@/types/supabase'
+import type { SupabaseClient } from '@supabase/supabase-js'
+
+type ProfileRow = Database['public']['Tables']['profiles']['Row']
+type ApplicationRow = Database['public']['Tables']['applications']['Row']
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 export default async function AdminPage() {
-    const supabase = await createClient()
+    const supabase = await createClient() as SupabaseClient<Database>
 
     const { data: { user } } = await supabase.auth.getUser()
 
@@ -15,20 +20,22 @@ export default async function AdminPage() {
     }
 
     // Check role
-    const { data: profile } = await supabase
+    const profileResponse = await supabase
         .from('profiles')
         .select('role')
-        .eq('id', user.id)
-        .single() as { data: { role: 'admin' | 'staff' | 'client' } | null }
+        .eq<'id'>('id', user.id as ProfileRow['id'])
+        .maybeSingle<{ role: ProfileRow['role'] }>()
+    const profile = profileResponse.data
 
     if (!profile || (profile.role !== 'admin' && profile.role !== 'staff')) {
         redirect('/')
     }
 
-    const { data: applications } = await supabase
+    const applicationsResponse = await supabase
         .from('applications')
         .select('*')
         .order('created_at', { ascending: false })
+    const applications = (applicationsResponse.data ?? []) as ApplicationRow[]
 
     const isAdmin = profile.role === 'admin'
 

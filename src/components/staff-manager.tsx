@@ -34,7 +34,7 @@ export default function StaffManager() {
             if (error && error.code !== 'PGRST116') {
                 console.error('Error loading staff requests:', error)
             } else {
-                setStaffRequests(data || [])
+                setStaffRequests((data ?? []) as StaffRequest[])
             }
         } catch (error) {
             console.error('Error loading staff requests:', error)

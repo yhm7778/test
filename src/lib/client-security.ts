@@ -1,6 +1,18 @@
 // Client-side security protection
 // Disable console in production and prevent common hacking attempts
 
+type FirebugInfo = {
+    chrome?: {
+        isInitialized?: boolean
+    }
+}
+
+declare global {
+    interface Window {
+        Firebug?: FirebugInfo
+    }
+}
+
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
     // Disable console methods
     const noop = () => { }
@@ -53,9 +65,11 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
         const heightThreshold = window.outerHeight - window.innerHeight > threshold
         const orientation = widthThreshold ? 'vertical' : 'horizontal'
 
+        const firebugDetected = Boolean(window.Firebug?.chrome?.isInitialized)
+
         if (
             !(heightThreshold && widthThreshold) &&
-            ((window.Firebug && window.Firebug.chrome && window.Firebug.chrome.isInitialized) ||
+            (firebugDetected ||
                 widthThreshold ||
                 heightThreshold)
         ) {
@@ -67,7 +81,7 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
 
     // Prevent iframe embedding
     if (window.top !== window.self) {
-        window.top!.location = window.self.location
+        window.top!.location.href = window.self.location.href
     }
 
     // Clear clipboard on copy

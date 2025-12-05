@@ -2,8 +2,12 @@ import { createClient } from '@/utils/supabase/server'
 import { generateZip } from '@/services/zip-service'
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
+import { Database } from '@/types/supabase'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
+
+type ApplicationRow = Database['public']['Tables']['applications']['Row']
 
 export async function GET() {
     // Verify cron secret if needed (Vercel Cron uses Authorization header)
@@ -11,7 +15,7 @@ export async function GET() {
     //   return new NextResponse('Unauthorized', { status: 401 })
     // }
 
-    const supabase = await createClient()
+    const supabase = await createClient() as SupabaseClient<Database>
 
     // Fetch yesterday's applications
     const yesterday = new Date()
@@ -27,12 +31,14 @@ export async function GET() {
         .gte('created_at', yesterday.toISOString())
         .lt('created_at', today.toISOString())
 
-    if (!applications || applications.length === 0) {
+    const typedApplications = (applications ?? []) as ApplicationRow[]
+
+    if (typedApplications.length === 0) {
         return NextResponse.json({ message: 'No applications yesterday' })
     }
 
     try {
-        const zipBlob = await generateZip(applications)
+        const zipBlob = await generateZip(typedApplications)
         const buffer = Buffer.from(await zipBlob.arrayBuffer())
 
         // Upload to Supabase Storage
