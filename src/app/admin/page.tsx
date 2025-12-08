@@ -35,6 +35,7 @@ export default async function AdminPage() {
         .from('applications')
         .select('*')
         .order('created_at', { ascending: false })
+        .limit(50) // Limit to latest 50 applications for performance
     const applications = (applicationsResponse.data ?? []) as ApplicationRow[]
 
     const isAdmin = profile.role === 'admin'

@@ -7,15 +7,28 @@ import PhotoUpload from './photo-upload'
 import { sanitizeHtml, validateFile, sanitizeFilename } from '@/lib/security'
 import { Loader2 } from 'lucide-react'
 
-export default function ApplicationForm() {
-    const [storeName, setStoreName] = useState('')
+import { Database } from '@/types/supabase'
+
+interface ApplicationFormProps {
+    initialData?: Database['public']['Tables']['applications']['Row']
+    readOnly?: boolean
+}
+
+export default function ApplicationForm({ initialData, readOnly = false }: ApplicationFormProps) {
+    const parseBlogCount = (notes: string | null) => {
+        if (!notes) return ''
+        const match = notes.match(/블로그 리뷰 갯수:\s*(\d+)개/)
+        return match ? match[1] : ''
+    }
+
+    const [storeName, setStoreName] = useState(initialData?.store_name || '')
     const [photos, setPhotos] = useState<File[]>([])
-    const [blogCount, setBlogCount] = useState('')
-    const [keyword1, setKeyword1] = useState('')
-    const [keyword2, setKeyword2] = useState('')
-    const [advantages, setAdvantages] = useState('')
-    const [contentKeywords, setContentKeywords] = useState('')
-    const [agreedToGuidelines, setAgreedToGuidelines] = useState(false)
+    const [blogCount, setBlogCount] = useState(parseBlogCount(initialData?.notes || null))
+    const [keyword1, setKeyword1] = useState(initialData?.keywords?.[0] || '')
+    const [keyword2, setKeyword2] = useState(initialData?.keywords?.[1] || '')
+    const [advantages, setAdvantages] = useState(initialData?.advantages || '')
+    const [contentKeywords, setContentKeywords] = useState(initialData?.tags?.join(', ') || '')
+    const [agreedToGuidelines, setAgreedToGuidelines] = useState(!!initialData)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [error, setError] = useState('')
 
@@ -24,6 +37,8 @@ export default function ApplicationForm() {
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault()
+        if (readOnly) return
+
         setError('')
         setIsSubmitting(true)
 
@@ -63,8 +78,7 @@ export default function ApplicationForm() {
             const { data: { user } } = await supabase.auth.getUser()
 
             // Upload photos (with timeout safeguard to avoid infinite spinner)
-            const photoUrls: string[] = []
-            const uploadWithTimeout = async (task: Promise<any>, label: string) => {
+            const uploadWithTimeout = async <T,>(task: Promise<T>, label: string) => {
                 const timeoutMs = 20000
                 return await Promise.race([
                     task,
@@ -76,7 +90,8 @@ export default function ApplicationForm() {
 
             const sanitizedFolder = sanitizeFilename(storeName.trim() || 'store')
 
-            for (const photo of photos) {
+            // Upload photos in parallel
+            const uploadPromises = photos.map(async (photo) => {
                 const fileExt = photo.name.split('.').pop()
                 const sanitizedName = sanitizeFilename(`${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`)
                 const objectPath = `${sanitizedFolder}/${sanitizedName}`
@@ -102,8 +117,10 @@ export default function ApplicationForm() {
                     .from('applications')
                     .getPublicUrl(data.path)
 
-                photoUrls.push(publicUrl)
-            }
+                return publicUrl
+            })
+
+            const photoUrls = await Promise.all(uploadPromises)
 
             // Insert application with timeout
             const insertPromise = supabase
@@ -120,7 +137,7 @@ export default function ApplicationForm() {
 
             const { error: insertError } = await Promise.race([
                 insertPromise,
-                new Promise<{ error: any }>((_, reject) =>
+                new Promise<{ error: { message: string } | null }>((_, reject) =>
                     setTimeout(() => reject(new Error('신청서 제출이 지연되고 있습니다. 잠시 후 다시 시도해주세요.')), 20000)
                 )
             ])
@@ -159,10 +176,11 @@ export default function ApplicationForm() {
                         type="text"
                         value={storeName}
                         onChange={(e) => setStoreName(e.target.value)}
-                        className="input-field"
+                        className="input-field disabled:bg-gray-100 disabled:text-gray-500"
                         placeholder="상호명을 입력하세요"
                         required
                         maxLength={100}
+                        disabled={readOnly}
                     />
                 </div>
 
@@ -176,11 +194,12 @@ export default function ApplicationForm() {
                         min={1}
                         value={blogCount}
                         onChange={(e) => setBlogCount(e.target.value.replace(/[^0-9]/g, ''))}
-                        className="input-field"
+                        className="input-field disabled:bg-gray-100 disabled:text-gray-500"
                         placeholder="예: 5"
                         required
+                        disabled={readOnly}
                     />
-                    <p className="mt-2 text-xs text-gray-500">체크한 N개 만큼 파일을 분류해 주시면 작업 속도가 빨라집니다.</p>
+                    {!readOnly && <p className="mt-2 text-xs text-gray-500">체크한 N개 만큼 파일을 분류해 주시면 작업 속도가 빨라집니다.</p>}
                 </div>
 
                 {/* 사진 */}
@@ -188,7 +207,12 @@ export default function ApplicationForm() {
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
                         ■ 사진 : (이미지 기입, 동영상) <span className="text-red-500">*</span>
                     </label>
-                    <PhotoUpload photos={photos} setPhotos={setPhotos} />
+                    <PhotoUpload 
+                        photos={photos} 
+                        setPhotos={setPhotos} 
+                        initialUrls={initialData?.photo_urls || []}
+                        readOnly={readOnly}
+                    />
                 </div>
 
                 {/* 대표키워드 2개 */}
@@ -201,19 +225,21 @@ export default function ApplicationForm() {
                             type="text"
                             value={keyword1}
                             onChange={(e) => setKeyword1(e.target.value)}
-                            className="input-field"
+                            className="input-field disabled:bg-gray-100 disabled:text-gray-500"
                             placeholder="키워드 1"
                             required
                             maxLength={50}
+                            disabled={readOnly}
                         />
                         <input
                             type="text"
                             value={keyword2}
                             onChange={(e) => setKeyword2(e.target.value)}
-                            className="input-field"
+                            className="input-field disabled:bg-gray-100 disabled:text-gray-500"
                             placeholder="키워드 2"
                             required
                             maxLength={50}
+                            disabled={readOnly}
                         />
                     </div>
                 </div>
@@ -226,10 +252,11 @@ export default function ApplicationForm() {
                     <textarea
                         value={advantages}
                         onChange={(e) => setAdvantages(e.target.value)}
-                        className="input-field min-h-[100px] resize-y"
+                        className="input-field min-h-[100px] resize-y disabled:bg-gray-100 disabled:text-gray-500"
                         placeholder="신메뉴가 출시된 점 어필해주세요"
                         required
                         maxLength={1000}
+                        disabled={readOnly}
                     />
                 </div>
 
@@ -242,52 +269,57 @@ export default function ApplicationForm() {
                         type="text"
                         value={contentKeywords}
                         onChange={(e) => setContentKeywords(e.target.value)}
-                        className="input-field"
+                        className="input-field disabled:bg-gray-100 disabled:text-gray-500"
                         placeholder="키워드를 쉼표(,)로 구분하여 입력하세요"
                         required
                         maxLength={200}
+                        disabled={readOnly}
                     />
                 </div>
 
                 {/* 주의사항 체크박스 */}
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                        ■ 주의사항 <span className="text-red-500">*</span>
-                    </label>
-                    <div className="p-4 bg-gray-50 border border-gray-200 rounded text-sm text-gray-700 mb-3">
-                        주의사항 / 해당 가이드라인 1개당 사진을 나누어서 전달주시면 훨씬 상세한 블로그 작성이 가능합니다.
-                        여러 장 회신이 어려우시면 포괄적인 장점들만 작성해 주셔도 여러 블로그 발행이 가능합니다.
-                        블로그는 양질보다는 갯수로 구매 전환과 브랜딩을 위한 사항입니다. 상세내용 공지를 꼭 확인해주세요.
+                {!readOnly && (
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            ■ 주의사항 <span className="text-red-500">*</span>
+                        </label>
+                        <div className="p-4 bg-gray-50 border border-gray-200 rounded text-sm text-gray-700 mb-3">
+                            주의사항 / 해당 가이드라인 1개당 사진을 나누어서 전달주시면 훨씬 상세한 블로그 작성이 가능합니다.
+                            여러 장 회신이 어려우시면 포괄적인 장점들만 작성해 주셔도 여러 블로그 발행이 가능합니다.
+                            블로그는 양질보다는 갯수로 구매 전환과 브랜딩을 위한 사항입니다. 상세내용 공지를 꼭 확인해주세요.
+                        </div>
+                        <label className="flex items-start gap-2 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={agreedToGuidelines}
+                                onChange={(e) => setAgreedToGuidelines(e.target.checked)}
+                                className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                required
+                            />
+                            <span className="text-sm text-gray-700">
+                                위 주의사항을 확인했으며 이에 동의합니다.
+                            </span>
+                        </label>
                     </div>
-                    <label className="flex items-start gap-2 cursor-pointer">
-                        <input
-                            type="checkbox"
-                            checked={agreedToGuidelines}
-                            onChange={(e) => setAgreedToGuidelines(e.target.checked)}
-                            className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                            required
-                        />
-                        <span className="text-sm text-gray-700">
-                            위 주의사항을 확인했으며 이에 동의합니다.
-                        </span>
-                    </label>
-                </div>
+                )}
 
                 {/* Submit Button */}
-                <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    {isSubmitting ? (
-                        <>
-                            <Loader2 className="h-5 w-5 animate-spin" />
-                            <span>제출 중...</span>
-                        </>
-                    ) : (
-                        <span>신청하기</span>
-                    )}
-                </button>
+                {!readOnly && (
+                    <button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {isSubmitting ? (
+                            <>
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                                <span>제출 중...</span>
+                            </>
+                        ) : (
+                            <span>신청하기</span>
+                        )}
+                    </button>
+                )}
             </div>
         </form>
     )

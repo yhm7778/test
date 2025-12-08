@@ -6,7 +6,7 @@ import { LogOut, User, Shield, Menu, X, Loader2 } from 'lucide-react'
 import { useState } from 'react'
 
 export default function Header() {
-    const { user, profile, session, signOut, isSigningOut, isLoading } = useAuth()
+    const { user, profile, session, signOut, isSigningOut } = useAuth()
     const [isMenuOpen, setIsMenuOpen] = useState(false)
     const normalizeRole = (role: unknown): 'admin' | 'staff' | 'client' | undefined => {
         if (typeof role !== 'string') return undefined

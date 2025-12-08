@@ -63,6 +63,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 : null
 
             if (session?.user) {
+                // Check session storage cache first for immediate feedback
+                const cacheKey = `profile_${session.user.id}`
+                const cachedProfileStr = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(cacheKey) : null
+                
+                if (cachedProfileStr) {
+                    try {
+                        const cached = JSON.parse(cachedProfileStr)
+                        setProfile(cached)
+                        // If we have a cache, we can stop loading immediately
+                        setIsLoading(false) 
+                    } catch (e) {
+                        console.error('Error parsing cached profile', e)
+                    }
+                }
+
                 try {
                     // Add timeout to profile fetch to prevent hanging
                     const fetchProfile = supabase
@@ -80,21 +95,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     if (!isMounted) return
 
                     if (error) {
-                        console.warn('Failed to load profile (or timed out), using metadata fallback', error)
-                        setProfile(fallbackProfile)
+                        // If we didn't have a cache, we must fallback now. 
+                        // If we had a cache, we keep it (or fallback if it was invalid/cleared)
+                        if (!cachedProfileStr) {
+                            console.warn('Failed to load profile (or timed out), using metadata fallback', error)
+                            setProfile(fallbackProfile)
+                        }
                     } else {
                         const normalizedDbRole = normalizeRole(profileData?.role)
                         const mergedProfile = profileData && normalizedDbRole
                             ? { ...profileData, role: normalizedDbRole }
                             : fallbackProfile
+                        
                         setProfile(mergedProfile)
+                        
+                        // Update cache
+                        if (typeof sessionStorage !== 'undefined') {
+                            sessionStorage.setItem(cacheKey, JSON.stringify(mergedProfile))
+                        }
                     }
                 } catch (err) {
                     console.error('Unexpected error loading profile:', err)
-                    setProfile(fallbackProfile)
+                    if (!cachedProfileStr) {
+                        setProfile(fallbackProfile)
+                    }
                 }
             } else {
                 setProfile(null)
+                if (typeof sessionStorage !== 'undefined') {
+                    // Clear cache on logout
+                    Object.keys(sessionStorage).forEach(key => {
+                        if (key.startsWith('profile_')) {
+                            sessionStorage.removeItem(key)
+                        }
+                    })
+                }
             }
 
             setIsLoading(false)
@@ -148,20 +183,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     }
 
-    const normalizeRole = (role: unknown): Profile['role'] | undefined => {
-        if (typeof role !== 'string') return undefined
-        const value = role.trim().toLowerCase()
-        if (value === 'admin' || value === 'staff' || value === 'client') return value as Profile['role']
-        return undefined
-    }
-
-    const derivedRole =
-        normalizeRole(profile?.role) ||
-        normalizeRole(session?.user?.user_metadata?.role) ||
-        normalizeRole(session?.user?.app_metadata?.role) ||
-        (Array.isArray(session?.user?.app_metadata?.roles)
-            ? normalizeRole(session?.user?.app_metadata?.roles[0])
-            : undefined)
     return (
         <AuthContext.Provider value={{ user, session, profile, isLoading, isSigningOut, signOut }}>
             {children}

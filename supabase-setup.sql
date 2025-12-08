@@ -22,9 +22,21 @@ create table if not exists applications (
         photo_urls text [],
         expire_at timestamp with time zone default (now() + interval '7 days')
 );
+
+-- Create menu_items table
+create table if not exists menu_items (
+    id uuid primary key default uuid_generate_v4(),
+    label text not null,
+    href text not null,
+    "order" integer default 0,
+    created_at timestamp with time zone default now()
+);
+
 -- Enable Row Level Security
 alter table profiles enable row level security;
 alter table applications enable row level security;
+alter table menu_items enable row level security;
+
 -- Profiles RLS Policies
 create policy "Users can view own profile" on profiles for
 select using (auth.uid() = id);
@@ -43,7 +55,7 @@ select using (
             select 1
             from profiles
             where profiles.id = auth.uid()
-                and profiles.role in ('admin', 'staff')
+            and profiles.role in ('admin', 'staff')
         )
     );
 create policy "Admins and staff can view all applications" on applications for
@@ -52,7 +64,7 @@ select using (
             select 1
             from profiles
             where profiles.id = auth.uid()
-                and profiles.role in ('admin', 'staff')
+            and profiles.role in ('admin', 'staff')
         )
     );
 create policy "Admins can delete applications" on applications for delete using (
@@ -60,9 +72,20 @@ create policy "Admins can delete applications" on applications for delete using 
         select 1
         from profiles
         where profiles.id = auth.uid()
-            and profiles.role = 'admin'
+        and profiles.role = 'admin'
     )
 );
+
+-- Menu Items RLS Policies
+create policy "Anyone can read menu items" on menu_items for select using (true);
+create policy "Admins can manage menu items" on menu_items for all using (
+    exists (
+        select 1 from profiles
+        where profiles.id = auth.uid()
+        and profiles.role = 'admin'
+    )
+);
+
 -- Create function to automatically create profile on signup
 create or replace function public.handle_new_user() returns trigger as $$ begin
 insert into public.profiles (id, email, role)
