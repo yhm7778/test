@@ -20,6 +20,7 @@ export default async function MyPage() {
         .select('*')
         .eq<'user_id'>('user_id', user.id)
         .order('created_at', { ascending: false })
+        .limit(50)
     const applications = (applicationsResponse.data ?? []) as ApplicationRow[]
 
     return (

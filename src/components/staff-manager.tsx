@@ -14,7 +14,10 @@ export default function StaffManager() {
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [createStatus, setCreateStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
+    const [isLoading, setIsLoading] = useState(true)
+
     const loadStaffMembers = useCallback(async () => {
+        setIsLoading(true)
         try {
             const response = await fetch('/api/staff/members', { cache: 'no-store' })
             const result = await response.json()
@@ -27,6 +30,8 @@ export default function StaffManager() {
             setStaffMembers(result.data || [])
         } catch (error) {
             console.error('Error loading staff members:', error)
+        } finally {
+            setIsLoading(false)
         }
     }, [])
 
@@ -171,70 +176,79 @@ export default function StaffManager() {
                     <h2 className="text-2xl font-bold text-gray-900">직원 목록</h2>
                     <p className="text-gray-500 text-sm mt-1">현재 등록된 직원 및 관리자 목록</p>
                 </div>
-                <div className="bg-gradient-to-br from-slate-900 via-gray-900 to-slate-950 rounded-2xl overflow-hidden shadow-2xl border border-slate-800/60">
+                <div className="bg-white rounded-lg overflow-hidden shadow-sm border border-gray-200">
                     <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-slate-800/40">
-                            <thead className="bg-gradient-to-r from-slate-800/95 via-slate-800/90 to-slate-800/95 backdrop-blur-sm">
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
                                 <tr>
-                                    <th className="px-6 py-5 text-left text-xs font-bold text-slate-200 uppercase tracking-wider">
+                                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
                                         이메일
                                     </th>
-                                    <th className="px-6 py-5 text-left text-xs font-bold text-slate-200 uppercase tracking-wider whitespace-nowrap">
+                                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">
                                         역할
                                     </th>
-                                    <th className="px-6 py-5 text-left text-xs font-bold text-slate-200 uppercase tracking-wider whitespace-nowrap">
+                                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">
                                         가입일
                                     </th>
-                                    <th className="px-6 py-5 text-xs font-bold text-slate-200 uppercase tracking-wider text-center w-24 whitespace-nowrap">
+                                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-center w-24 whitespace-nowrap">
                                         관리
                                     </th>
                                 </tr>
                             </thead>
-                            <tbody className="bg-slate-950/30 divide-y divide-slate-800/40">
-                                {staffMembers.length === 0 ? (
+                            <tbody className="bg-white divide-y divide-gray-200">
+                                {isLoading ? (
+                                    <tr>
+                                        <td colSpan={4} className="px-6 py-12 text-center">
+                                            <div className="flex flex-col items-center justify-center gap-2">
+                                                <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600" />
+                                                <span className="text-sm text-gray-500">목록을 불러오는 중...</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ) : staffMembers.length === 0 ? (
                                     <tr>
                                         <td colSpan={4} className="px-6 py-16 text-center">
                                         <div className="flex flex-col items-center gap-3">
-                                            <div className="w-16 h-16 rounded-full bg-slate-800/50 flex items-center justify-center border border-slate-700/50">
-                                                <Users className="h-8 w-8 text-slate-500" />
+                                            <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center border border-gray-200">
+                                                <Users className="h-8 w-8 text-gray-400" />
                                             </div>
-                                            <p className="text-slate-400 text-sm font-medium">직원이 없습니다.</p>
+                                            <p className="text-gray-500 text-sm font-medium">직원이 없습니다.</p>
                                         </div>
                                         </td>
                                     </tr>
                                 ) : (
                                     staffMembers.map((staff) => (
-                                        <tr key={staff.id} className="hover:bg-slate-800/50 transition-all duration-200 group border-b border-slate-800/30">
-                                            <td className="px-6 py-5 whitespace-nowrap text-sm font-semibold text-slate-50 group-hover:text-white">
+                                        <tr key={staff.id} className="hover:bg-gray-50 transition-colors duration-150 group">
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                                 <div className="flex items-center gap-2">
-                                                    <UserCheck className="h-4 w-4 text-slate-400" />
+                                                    <UserCheck className="h-4 w-4 text-gray-400" />
                                                     {staff.email}
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-5 whitespace-nowrap">
-                                                <span className={`px-3 py-1.5 rounded-lg text-xs font-semibold backdrop-blur-sm shadow-sm ${
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${
                                                     staff.role === 'admin' 
-                                                        ? 'bg-purple-500/25 text-purple-200 border border-purple-400/40'
-                                                        : 'bg-blue-500/25 text-blue-200 border border-blue-400/40'
+                                                        ? 'bg-purple-50 text-purple-700 border-purple-200'
+                                                        : 'bg-blue-50 text-blue-700 border-blue-200'
                                                 }`}>
                                                     {staff.role === 'admin' ? '관리자' : '직원'}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-5 whitespace-nowrap text-sm text-slate-300 group-hover:text-slate-100">
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                                 {staff.created_at ? new Date(staff.created_at).toLocaleDateString('ko-KR') : '-'}
                                             </td>
-                                            <td className="px-6 py-5 whitespace-nowrap text-sm">
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm">
                                                 <div className="flex justify-center sm:justify-end">
                                                     {staff.role !== 'admin' ? (
                                                         <button
                                                             onClick={() => handleProcessResignation(staff.id)}
-                                                            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold text-red-100 bg-red-500/20 border border-red-400/40 hover:bg-red-500/30 transition-colors"
+                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-red-700 bg-red-50 border border-red-200 hover:bg-red-100 transition-colors"
                                                         >
                                                             <UserMinus className="h-3.5 w-3.5" />
                                                             퇴사 처리
                                                         </button>
                                                     ) : (
-                                                        <span className="text-xs text-slate-500">-</span>
+                                                        <span className="text-xs text-gray-400">-</span>
                                                     )}
                                                 </div>
                                             </td>

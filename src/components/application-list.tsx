@@ -19,7 +19,7 @@ interface ApplicationListProps {
     isAdmin?: boolean
 }
 
-export default function ApplicationList({ initialApplications }: ApplicationListProps) {
+export default function ApplicationList({ initialApplications, isAdmin = false }: ApplicationListProps) {
     const [applications, setApplications] = useState<Application[]>(initialApplications)
     const [searchTerm, setSearchTerm] = useState('')
     const [startDate, setStartDate] = useState('')
@@ -53,6 +53,14 @@ export default function ApplicationList({ initialApplications }: ApplicationList
             return matchesSearch && matchesDate
         })
     }, [applications, searchTerm, startDate, endDate])
+
+    // Cost Calculation
+    const totalCost = useMemo(() => {
+        return filteredApplications.reduce((acc, app) => {
+            const count = parseInt(app.notes?.match(/블로그 리뷰 갯수:\s*(\d+)개/)?.[1] || '0', 10)
+            return acc + (count * 10000)
+        }, 0)
+    }, [filteredApplications])
 
     // Selection handlers
     const handleSelectAll = () => {
@@ -240,6 +248,7 @@ ${app.notes}
                     </div>
 
                     {/* Action Buttons */}
+                    {isAdmin && (
                     <div className="flex items-center gap-2 w-full md:w-auto justify-end">
                         <button
                             onClick={() => handleDelete(selectedIds)}
@@ -258,6 +267,7 @@ ${app.notes}
                             {selectedIds.length > 0 ? `${selectedIds.length}개 다운로드` : '전체 다운로드'}
                         </button>
                     </div>
+                    )}
                 </div>
                 
                 {/* Status Bar */}
@@ -266,13 +276,8 @@ ${app.notes}
                         총 <span className="font-bold text-blue-600">{filteredApplications.length}</span>개의 신청서
                         {selectedIds.length > 0 && ` (${selectedIds.length}개 선택됨)`}
                     </div>
-                    {/* Cost Calculation (Placeholder) */}
-                    <div className="flex items-center gap-2">
-                        <span className="text-gray-500">예상 비용:</span>
-                        <span className="font-bold text-gray-900">
-                            {(filteredApplications.length * 10000).toLocaleString()}원
-                        </span>
-                        <span className="text-xs text-gray-400">(예시 단가: 10,000원)</span>
+                    <div>
+                        총 예상 비용: <span className="font-bold text-gray-900">{totalCost.toLocaleString()}원</span>
                     </div>
                 </div>
             </div>
@@ -283,6 +288,7 @@ ${app.notes}
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
+                                {isAdmin && (
                                 <th scope="col" className="px-6 py-3 text-left">
                                     <button 
                                         onClick={handleSelectAll}
@@ -295,6 +301,7 @@ ${app.notes}
                                         )}
                                     </button>
                                 </th>
+                                )}
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     신청일시
                                 </th>
@@ -307,6 +314,9 @@ ${app.notes}
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     블로그 수
                                 </th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    예상 비용
+                                </th>
                                 <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     관리
                                 </th>
@@ -315,13 +325,14 @@ ${app.notes}
                         <tbody className="bg-white divide-y divide-gray-200">
                             {filteredApplications.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="px-6 py-10 text-center text-gray-500">
+                                    <td colSpan={isAdmin ? 6 : 5} className="px-6 py-10 text-center text-gray-500">
                                         검색 결과가 없습니다.
                                     </td>
                                 </tr>
                             ) : (
                                 filteredApplications.map((app) => (
                                     <tr key={app.id} className="hover:bg-gray-50 transition-colors">
+                                        {isAdmin && (
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <button 
                                                 onClick={() => toggleSelect(app.id)}
@@ -334,6 +345,7 @@ ${app.notes}
                                                 )}
                                             </button>
                                         </td>
+                                        )}
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                             {format(parseISO(app.created_at), 'yyyy-MM-dd HH:mm', { locale: ko })}
                                         </td>
@@ -351,6 +363,18 @@ ${app.notes}
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                             {app.notes?.match(/블로그 리뷰 갯수:\s*(\d+)개/)?.[1] || '-'}개
                                         </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            {(() => {
+                                                const count = parseInt(app.notes?.match(/블로그 리뷰 갯수:\s*(\d+)개/)?.[1] || '0', 10)
+                                                const cost = count * 10000
+                                                return (
+                                                    <div className="flex flex-col">
+                                                        <span className="font-semibold text-gray-900">{cost.toLocaleString()}원</span>
+                                                        <span className="text-xs text-gray-400">(예시 단가: 10,000원)</span>
+                                                    </div>
+                                                )
+                                            })()}
+                                        </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <div className="flex items-center justify-end gap-2">
                                                 <button
@@ -360,6 +384,7 @@ ${app.notes}
                                                 >
                                                     <Eye className="h-4 w-4" />
                                                 </button>
+                                                {isAdmin && (
                                                 <button
                                                     onClick={() => handleDelete([app.id])}
                                                     className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
@@ -367,6 +392,7 @@ ${app.notes}
                                                 >
                                                     <Trash2 className="h-4 w-4" />
                                                 </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>

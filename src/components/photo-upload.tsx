@@ -1,14 +1,116 @@
+/* eslint-disable @next/next/no-img-element */
 'use client'
 
 import { useState, useCallback, ChangeEvent } from 'react'
-import { Upload, X } from 'lucide-react'
-import Image from 'next/image'
+import { Upload, X, ImageOff, RefreshCw } from 'lucide-react'
+import { createClient } from '@/utils/supabase/client'
 
 interface PhotoUploadProps {
     photos: File[]
     setPhotos: (photos: File[]) => void
     initialUrls?: string[]
     readOnly?: boolean
+}
+
+// Internal component to handle individual media items with fallback logic
+const SupabaseMedia = ({ 
+    url, 
+    alt, 
+    className, 
+    onClick, 
+    controls = false 
+}: { 
+    url: string, 
+    alt?: string, 
+    className?: string,
+    onClick?: () => void,
+    controls?: boolean 
+}) => {
+    const [currentUrl, setCurrentUrl] = useState(url)
+    const [isRetrying, setIsRetrying] = useState(false)
+    const [isDead, setIsDead] = useState(false)
+    const supabase = createClient()
+    
+    const isVideo = (path: string) => path.match(/\.(mp4|webm|ogg)$/i)
+
+    const handleError = async () => {
+        if (isRetrying || isDead || currentUrl !== url) return 
+        
+        setIsRetrying(true)
+
+        try {
+            // Try to extract path from Supabase Public URL
+            // Format example: .../storage/v1/object/public/applications/folder/file.jpg
+            const match = url.match(/\/storage\/v1\/object\/public\/applications\/(.+)$/)
+            
+            if (match && match[1]) {
+                const path = decodeURIComponent(match[1])
+                console.log(`Attempting to recover image: ${path}`)
+                
+                const { data, error: signedError } = await supabase
+                    .storage
+                    .from('applications')
+                    .createSignedUrl(path, 3600) // 1 hour validity
+                
+                if (!signedError && data?.signedUrl) {
+                    console.log('Recovered with signed URL')
+                    setCurrentUrl(data.signedUrl)
+                    setIsRetrying(false)
+                    return
+                } else {
+                    console.error('Failed to get signed URL:', signedError)
+                }
+            } else {
+                console.warn('URL does not match expected Supabase pattern:', url)
+            }
+        } catch (e) {
+            console.error("Failed to recover image:", e)
+        }
+
+        // If we reach here, recovery failed
+        setIsRetrying(false)
+        setIsDead(true)
+    }
+
+    if (isDead) {
+        return (
+            <div className={`flex flex-col items-center justify-center bg-gray-100 text-gray-400 ${className}`}>
+                <ImageOff className="h-8 w-8 mb-2" />
+                <span className="text-xs text-center px-2 break-all">
+                    이미지를 불러올 수 없습니다
+                </span>
+            </div>
+        )
+    }
+
+    if (isVideo(url)) {
+        return (
+             <video
+                src={currentUrl}
+                className={className}
+                controls={controls}
+                onClick={onClick}
+                onError={handleError}
+            />
+        )
+    }
+
+    return (
+        <div className="relative w-full h-full">
+            <img
+                src={currentUrl}
+                alt={alt || 'Image'}
+                className={`${className} ${isRetrying ? 'opacity-50' : ''}`}
+                onClick={onClick}
+                onError={handleError}
+            />
+            {isRetrying && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <RefreshCw className="h-6 w-6 animate-spin text-blue-500" />
+                </div>
+            )}
+        </div>
+    )
 }
 
 export default function PhotoUpload({ photos, setPhotos, initialUrls = [], readOnly = false }: PhotoUploadProps) {
@@ -61,11 +163,6 @@ export default function PhotoUpload({ photos, setPhotos, initialUrls = [], readO
         setPhotos(photos.filter((_, i) => i !== index))
     }
 
-    // Helper to check if url is video
-    const isVideo = (url: string) => {
-        return url.match(/\.(mp4|webm|ogg)$/i)
-    }
-
     return (
         <div className="space-y-4">
             {!readOnly && (
@@ -107,20 +204,11 @@ export default function PhotoUpload({ photos, setPhotos, initialUrls = [], readO
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                     {initialUrls.map((url, index) => (
                         <div key={`url-${index}`} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 group cursor-pointer" onClick={() => setSelectedImage(url)}>
-                            {isVideo(url) ? (
-                                <video
-                                    src={url}
-                                    className="w-full h-full object-cover"
-                                    controls
-                                />
-                            ) : (
-                                <Image
-                                    src={url}
-                                    alt={`Uploaded ${index + 1}`}
-                                    fill
-                                    className="object-cover"
-                                />
-                            )}
+                            <SupabaseMedia
+                                url={url}
+                                alt={`Uploaded ${index + 1}`}
+                                className="w-full h-full object-cover"
+                            />
                         </div>
                     ))}
                     
@@ -133,11 +221,10 @@ export default function PhotoUpload({ photos, setPhotos, initialUrls = [], readO
                                     controls
                                 />
                             ) : (
-                                <Image
+                                <img
                                     src={URL.createObjectURL(photo)}
                                     alt={`Preview ${index + 1}`}
-                                    fill
-                                    className="object-cover"
+                                    className="w-full h-full object-cover"
                                 />
                             )}
                             {!readOnly && (
@@ -167,20 +254,12 @@ export default function PhotoUpload({ photos, setPhotos, initialUrls = [], readO
                         >
                             <X className="h-8 w-8" />
                         </button>
-                        {isVideo(selectedImage) ? (
-                             <video
-                                src={selectedImage}
-                                className="max-w-full max-h-full"
-                                controls
-                                autoPlay
-                            />
-                        ) : (
-                            <img
-                                src={selectedImage}
-                                alt="Full size"
-                                className="max-w-full max-h-full object-contain"
-                            />
-                        )}
+                        <SupabaseMedia
+                            url={selectedImage}
+                            alt="Full size"
+                            className="max-w-full max-h-full object-contain"
+                            controls={true}
+                        />
                     </div>
                 </div>
             )}

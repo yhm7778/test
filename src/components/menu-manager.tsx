@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/utils/supabase/client'
-import { Plus, Trash2, Save, X, Edit2, Menu } from 'lucide-react'
+import { Plus, Trash2, Save, X, Edit2, Menu, Loader2 } from 'lucide-react'
 import { Database } from '@/types/supabase'
 
 type MenuItemRow = Database['public']['Tables']['menu_items']['Row']
@@ -21,9 +21,12 @@ export default function MenuManager() {
     const [editingId, setEditingId] = useState<string | null>(null)
     const [editForm, setEditForm] = useState<MenuForm>({ label: '', href: '', order: 0 })
     const [isAdding, setIsAdding] = useState(false)
+    const [isLoading, setIsLoading] = useState(true)
+    const [isSaving, setIsSaving] = useState(false)
     const supabase = createClient()
 
     const loadMenuItems = useCallback(async () => {
+        setIsLoading(true)
         try {
             const { data, error } = await supabase
                 .from('menu_items')
@@ -45,6 +48,8 @@ export default function MenuManager() {
             }
         } catch (error) {
             console.error('Error loading menu items:', error)
+        } finally {
+            setIsLoading(false)
         }
     }, [supabase])
 
@@ -53,6 +58,7 @@ export default function MenuManager() {
     }, [loadMenuItems])
 
     const handleSave = async () => {
+        setIsSaving(true)
         try {
             if (editingId) {
                 // Update existing item
@@ -62,12 +68,18 @@ export default function MenuManager() {
                     order: editForm.order,
                 }
 
-                const { error } = await supabase
+                const { data, error } = await supabase
                     .from('menu_items')
                     .update(updatePayload)
                     .eq('id', editingId)
+                    .select()
+                    .single()
 
                 if (error) throw error
+
+                if (data) {
+                    setMenuItems(prev => prev.map(item => item.id === editingId ? (data as MenuItemRow) : item).sort((a, b) => a.order - b.order))
+                }
             } else {
                 // Create new item
                 const insertPayload: MenuItemInsert = {
@@ -76,18 +88,22 @@ export default function MenuManager() {
                     order: editForm.order,
                 }
 
-                const { error } = await supabase
+                const { data, error } = await supabase
                     .from('menu_items')
                     .insert([insertPayload])
+                    .select()
+                    .single()
 
                 if (error) throw error
+                
+                if (data) {
+                    setMenuItems(prev => [...prev, (data as MenuItemRow)].sort((a, b) => a.order - b.order))
+                }
             }
 
-            await loadMenuItems()
             setEditingId(null)
             setIsAdding(false)
             setEditForm({ label: '', href: '', order: 0 })
-            alert('저장되었습니다.')
         } catch (error: unknown) {
             console.error('Error saving menu item:', error)
             if (error && typeof error === 'object' && 'code' in error && (error as { code?: string }).code === '42P01') { // Table doesn't exist
@@ -95,6 +111,8 @@ export default function MenuManager() {
             } else {
                 alert('저장 중 오류가 발생했습니다.')
             }
+        } finally {
+            setIsSaving(false)
         }
     }
 
@@ -156,34 +174,35 @@ export default function MenuManager() {
                 </button>
             </div>
 
-            <div className="bg-gradient-to-br from-slate-900 via-gray-900 to-slate-950 rounded-2xl overflow-hidden shadow-2xl border border-slate-800/60">
+            <div className="bg-white rounded-lg overflow-hidden shadow-sm border border-gray-200">
                 <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-700">
-                        <thead className="bg-gradient-to-r from-slate-800/95 via-slate-800/90 to-slate-800/95 backdrop-blur-sm">
+                    <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
                             <tr>
-                                <th className="px-6 py-5 text-left text-xs font-bold text-slate-200 uppercase tracking-wider">
+                                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
                                     순서
                                 </th>
-                                <th className="px-6 py-5 text-left text-xs font-bold text-slate-200 uppercase tracking-wider">
+                                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
                                     메뉴명
                                 </th>
-                                <th className="px-6 py-5 text-left text-xs font-bold text-slate-200 uppercase tracking-wider">
+                                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
                                     링크
                                 </th>
-                                <th className="px-6 py-5 text-left text-xs font-bold text-slate-200 uppercase tracking-wider">
+                                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
                                     관리
                                 </th>
                             </tr>
                         </thead>
-                        <tbody className="bg-slate-950/30 divide-y divide-slate-800/40">
+                        <tbody className="bg-white divide-y divide-gray-200">
                             {isAdding && (
-                                <tr className="bg-gray-800/30">
+                                <tr className="bg-gray-50">
                                     <td className="px-6 py-4">
                                         <input
                                             type="number"
                                             value={editForm.order}
                                             onChange={(e) => setEditForm({ ...editForm, order: parseInt(e.target.value) || 0 })}
-                                            className="w-20 px-3 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm text-white"
+                                            className="w-20 px-3 py-1.5 bg-white border border-gray-300 rounded text-sm text-gray-900"
+                                            disabled={isSaving}
                                         />
                                     </td>
                                     <td className="px-6 py-4">
@@ -192,7 +211,8 @@ export default function MenuManager() {
                                             value={editForm.label}
                                             onChange={(e) => setEditForm({ ...editForm, label: e.target.value })}
                                             placeholder="메뉴명"
-                                            className="w-full px-3 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm text-white placeholder-gray-400"
+                                            className="w-full px-3 py-1.5 bg-white border border-gray-300 rounded text-sm text-gray-900 placeholder-gray-400"
+                                            disabled={isSaving}
                                         />
                                     </td>
                                     <td className="px-6 py-4">
@@ -201,21 +221,24 @@ export default function MenuManager() {
                                             value={editForm.href}
                                             onChange={(e) => setEditForm({ ...editForm, href: e.target.value })}
                                             placeholder="/경로"
-                                            className="w-full px-3 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm text-white placeholder-gray-400"
+                                            className="w-full px-3 py-1.5 bg-white border border-gray-300 rounded text-sm text-gray-900 placeholder-gray-400"
+                                            disabled={isSaving}
                                         />
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="flex gap-2">
                                             <button
                                                 onClick={handleSave}
-                                                className="p-2 text-green-400 hover:bg-green-500/20 rounded-lg transition-colors"
+                                                disabled={isSaving}
+                                                className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
                                                 title="저장"
                                             >
-                                                <Save className="h-4 w-4" />
+                                                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                                             </button>
                                             <button
                                                 onClick={cancelEdit}
-                                                className="p-2 text-gray-400 hover:bg-gray-700 rounded-lg transition-colors"
+                                                disabled={isSaving}
+                                                className="p-2 text-gray-400 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
                                                 title="취소"
                                             >
                                                 <X className="h-4 w-4" />
@@ -224,54 +247,66 @@ export default function MenuManager() {
                                     </td>
                                 </tr>
                             )}
-                            {menuItems.length === 0 && !isAdding ? (
+                            {isLoading ? (
+                                <tr>
+                                    <td colSpan={4} className="px-6 py-12 text-center">
+                                        <div className="flex flex-col items-center justify-center gap-2">
+                                            <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600" />
+                                            <span className="text-sm text-gray-500">메뉴를 불러오는 중...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ) : menuItems.length === 0 && !isAdding ? (
                                 <tr>
                                     <td colSpan={4} className="px-6 py-16 text-center">
                                         <div className="flex flex-col items-center gap-3">
-                                            <div className="w-16 h-16 rounded-full bg-slate-800/50 flex items-center justify-center border border-slate-700/50">
-                                                <Menu className="h-8 w-8 text-slate-500" />
+                                            <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center border border-gray-200">
+                                                <Menu className="h-8 w-8 text-gray-400" />
                                             </div>
-                                            <p className="text-slate-400 text-sm font-medium">메뉴 항목이 없습니다. 메뉴를 추가해주세요.</p>
+                                            <p className="text-gray-500 text-sm font-medium">메뉴 항목이 없습니다. 메뉴를 추가해주세요.</p>
                                         </div>
                                     </td>
                                 </tr>
                             ) : (
                                 menuItems.map((item) => (
-                                    <tr key={item.id || item.order} className="hover:bg-slate-800/50 transition-all duration-200 group border-b border-slate-800/30">
-                                        <td className="px-6 py-5 whitespace-nowrap text-sm text-slate-300 group-hover:text-slate-100">
+                                    <tr key={item.id || item.order} className="hover:bg-gray-50 transition-colors duration-150 group border-b border-gray-100">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 group-hover:text-gray-900">
                                             {editingId === item.id ? (
                                                 <input
                                                     type="number"
                                                     value={editForm.order}
                                                     onChange={(e) => setEditForm({ ...editForm, order: parseInt(e.target.value) || 0 })}
-                                                    className="w-20 px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:ring-2 focus:ring-blue-500"
+                                                    className="w-20 px-3 py-1.5 bg-white border border-gray-300 rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500"
+                                                    disabled={isSaving}
                                                 />
                                             ) : (
                                                 item.order
                                             )}
                                         </td>
-                                        <td className="px-6 py-5 whitespace-nowrap text-sm font-semibold text-slate-50 group-hover:text-white">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                             {editingId === item.id ? (
                                                 <input
                                                     type="text"
                                                     value={editForm.label}
                                                     onChange={(e) => setEditForm({ ...editForm, label: e.target.value })}
-                                                    className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:ring-2 focus:ring-blue-500"
+                                                    className="w-full px-3 py-1.5 bg-white border border-gray-300 rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500"
+                                                    disabled={isSaving}
                                                 />
                                             ) : (
                                                 item.label
                                             )}
                                         </td>
-                                        <td className="px-6 py-5 whitespace-nowrap text-sm text-slate-300 group-hover:text-slate-100">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 group-hover:text-gray-900">
                                             {editingId === item.id ? (
                                                 <input
                                                     type="text"
                                                     value={editForm.href}
                                                     onChange={(e) => setEditForm({ ...editForm, href: e.target.value })}
-                                                    className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:ring-2 focus:ring-blue-500"
+                                                    className="w-full px-3 py-1.5 bg-white border border-gray-300 rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500"
+                                                    disabled={isSaving}
                                                 />
                                             ) : (
-                                                <a href={item.href} className="text-blue-400 hover:text-blue-300 hover:underline transition-colors">
+                                                <a href={item.href} className="text-blue-600 hover:text-blue-800 hover:underline transition-colors">
                                                     {item.href}
                                                 </a>
                                             )}
@@ -281,14 +316,16 @@ export default function MenuManager() {
                                                 <div className="flex gap-2">
                                                     <button
                                                         onClick={handleSave}
-                                                        className="p-2 text-green-400 hover:bg-green-500/20 rounded-lg transition-colors"
+                                                        disabled={isSaving}
+                                                        className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
                                                         title="저장"
                                                     >
-                                                        <Save className="h-4 w-4" />
+                                                        {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                                                     </button>
                                                     <button
                                                         onClick={cancelEdit}
-                                                        className="p-2 text-gray-400 hover:bg-gray-700 rounded-lg transition-colors"
+                                                        disabled={isSaving}
+                                                        className="p-2 text-gray-400 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
                                                         title="취소"
                                                     >
                                                         <X className="h-4 w-4" />
@@ -298,7 +335,7 @@ export default function MenuManager() {
                                                 <div className="flex gap-2">
                                                     <button
                                                         onClick={() => startEdit(item)}
-                                                        className="p-2 text-blue-400 hover:bg-blue-500/20 rounded-lg transition-colors"
+                                                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                                                         title="수정"
                                                     >
                                                         <Edit2 className="h-4 w-4" />
@@ -306,7 +343,7 @@ export default function MenuManager() {
                                                     {item.id && (
                                                         <button
                                                             onClick={() => handleDelete(item.id!)}
-                                                            className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"
+                                                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                                             title="삭제"
                                                         >
                                                             <Trash2 className="h-4 w-4" />
