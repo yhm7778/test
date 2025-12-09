@@ -338,9 +338,9 @@ ${app.notes}
         <div className="space-y-6">
             {/* Control Panel */}
             <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm space-y-4">
-                <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-end">
+                <div className="flex flex-col xl:flex-row gap-4 justify-between items-start xl:items-end">
                     {/* Filters */}
-                    <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+                    <div className="flex flex-col sm:flex-row gap-4 w-full xl:w-auto">
                         <div className="space-y-1">
                             <label className="text-xs font-medium text-gray-500">기간 검색</label>
                             <div className="flex items-center gap-2">
@@ -376,7 +376,7 @@ ${app.notes}
 
                     {/* Action Buttons */}
                     {isAdmin && (
-                    <div className="flex flex-col sm:flex-row flex-wrap items-end sm:items-center gap-2 w-full md:w-auto justify-end mt-4 md:mt-0">
+                    <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto justify-end">
                         <div className="flex items-center gap-2">
                             <button
                                 onClick={() => handleBulkStatusUpdate('completed')}
@@ -411,7 +411,7 @@ ${app.notes}
                             <button
                                 onClick={() => handleDelete(selectedIds)}
                                 disabled={selectedIds.length === 0 || isDeleting}
-                                className="btn-danger py-2 px-3 text-sm flex items-center gap-2 disabled:opacity-50 bg-red-600 hover:bg-red-700 text-white whitespace-nowrap"
+                                className="btn-danger py-2 px-3 text-sm flex items-center gap-2 disabled:opacity-50 bg-red-600 hover:bg-red-700 text-white whitespace-nowrap rounded-md"
                             >
                                 {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                                 선택 삭제
