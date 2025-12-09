@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { Loader2 } from 'lucide-react'
 
+import { signIn, signUp } from '@/app/actions/auth'
+
 export default function LoginPage() {
     const [username, setUsername] = useState('')
     const [password, setPassword] = useState('')
@@ -25,6 +27,7 @@ export default function LoginPage() {
     }, [router, supabase])
 
     const getKoreanErrorMessage = (message: string) => {
+        if (/[가-힣]/.test(message)) return message
         if (message.includes('Invalid login credentials')) return '아이디 또는 비밀번호가 올바르지 않습니다.'
         if (message.includes('Email not confirmed')) return '계정 승인이 완료되지 않았습니다.'
         if (message.includes('User already registered')) return '이미 존재하는 아이디입니다.'
@@ -40,12 +43,8 @@ export default function LoginPage() {
         setError(null)
 
         try {
-            const { error } = await supabase.auth.signInWithPassword({
-                email: `${username}@vision.local`,
-                password,
-            })
-
-            if (error) throw error
+            const result = await signIn(username, password)
+            if (result.error) throw new Error(result.error)
 
             // Use router for navigation instead of hard reload
             router.refresh()
@@ -63,31 +62,12 @@ export default function LoginPage() {
         setError(null)
 
         try {
-            const { data, error } = await supabase.auth.signUp({
-                email: `${username}@vision.local`,
-                password,
-                options: {
-                    data: {
-                        role: 'client', // Default role
-                        username: username, // Store original username in metadata
-                    },
-                },
-            })
+            const result = await signUp(username, password)
+            if (result.error) throw new Error(result.error)
 
-            if (error) throw error
-
-            if (data.session) {
-                alert('회원가입이 완료되었습니다.')
-                router.refresh()
-                router.replace('/')
-            } else {
-                // If session is null, it usually means email confirmation is on.
-                // But for ID-based auth with dummy email, we can't confirm.
-                // We assume the admin has disabled email confirmation.
-                // If not, we should probably warn the user.
-                alert('회원가입이 요청되었습니다. 관리자 승인(또는 이메일 설정 해제) 후 로그인해주세요.')
-                setIsLoading(false)
-            }
+            alert('회원가입이 완료되었습니다.')
+            router.refresh()
+            router.replace('/')
         } catch (error: unknown) {
             const message = error instanceof Error ? error.message : 'Unknown error'
             setError(getKoreanErrorMessage(message))

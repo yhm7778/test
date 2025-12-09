@@ -3,13 +3,13 @@ import { createStaffAccount } from '@/app/actions/staff'
 
 export async function POST(request: NextRequest) {
     try {
-        const { email, password, name } = await request.json()
+        const { username, password, name } = await request.json()
 
-        if (!email || !password) {
-            return NextResponse.json({ error: '이메일과 비밀번호를 입력해주세요.' }, { status: 400 })
+        if (!username || !password) {
+            return NextResponse.json({ error: '아이디와 비밀번호를 입력해주세요.' }, { status: 400 })
         }
 
-        const result = await createStaffAccount(email, password, name)
+        const result = await createStaffAccount(username, password, name)
 
         if (result.error) {
             return NextResponse.json({ error: result.error }, { status: 400 })

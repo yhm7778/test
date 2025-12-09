@@ -41,7 +41,6 @@ export default function StaffManager() {
 
     const handleCreateStaff = async () => {
         const username = createForm.username.trim()
-        const email = `${username}@vision.local`
         const password = createForm.password.trim()
         const name = createForm.name.trim()
 
@@ -56,7 +55,7 @@ export default function StaffManager() {
             const response = await fetch('/api/staff/create', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password, name: name || undefined }),
+                body: JSON.stringify({ username, password, name: name || undefined }),
             })
 
             const data = await response.json()
