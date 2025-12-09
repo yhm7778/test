@@ -72,6 +72,35 @@ export default function ApplicationForm({ initialData, readOnly = false, type, t
         setIsSubmitting(true)
 
         try {
+            // Check monthly limit for new applications
+            if (!readOnly && !initialData) {
+                const { data: { user } } = await supabase.auth.getUser()
+                if (user) {
+                    const now = new Date()
+                    // Use UTC to determine the month range
+                    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString()
+                    const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999)).toISOString()
+
+                    const { count, error: countError } = await supabase
+                        .from('applications')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('user_id', user.id)
+                        .gte('created_at', start)
+                        .lte('created_at', end)
+
+                    if (countError) {
+                        console.error('Limit check error:', countError)
+                        throw new Error('신청 가능 횟수를 확인하는 중 오류가 발생했습니다.')
+                    }
+
+                    // Default limit 10 (Special cases 15 - requires DB setting)
+                    const limit = 10 
+                    if ((count || 0) >= limit) {
+                        throw new Error(`이번 달 신청 가능 횟수(${limit}회)를 초과했습니다. (월 최대 ${limit}회)`)
+                    }
+                }
+            }
+
             // Validation
             if (!storeName.trim()) {
                 throw new Error('상호명을 입력해주세요.')
@@ -81,6 +110,14 @@ export default function ApplicationForm({ initialData, readOnly = false, type, t
                 if (!blogCount.trim() || Number.isNaN(Number(blogCount)) || Number(blogCount) <= 0) {
                     throw new Error('발행할 블로그 리뷰 갯수를 입력해주세요.')
                 }
+                
+                // Validate minimum 5 photos per blog post
+                const requestedBlogCount = parseInt(blogCount)
+                const requiredMinPhotos = requestedBlogCount * 5
+                if (photos.length < requiredMinPhotos) {
+                    throw new Error(`블로그 1건당 최소 5장의 사진이 필요합니다. (신청하신 ${requestedBlogCount}건 발행을 위해 최소 ${requiredMinPhotos}장의 사진이 필요합니다)`)
+                }
+
                 if (photos.length === 0) {
                     throw new Error('최소 1장의 사진 또는 동영상을 업로드해주세요.')
                 }

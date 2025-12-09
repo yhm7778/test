@@ -120,7 +120,7 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
 
         if (error) {
             console.error('Status update error:', error)
-            alert('상태 변경 중 오류가 발생했습니다.')
+            alert(`상태 변경 중 오류가 발생했습니다: ${error.message}`)
             return
         }
 

@@ -49,10 +49,38 @@ export async function POST(request: Request) {
         const zipBlob = await generateZip(typedApplications)
         const buffer = Buffer.from(await zipBlob.arrayBuffer())
 
+        let filename = `Marketing_Applications_${new Date().toISOString().split('T')[0]}.zip`
+        
+        if (typedApplications.length === 1) {
+             const app = typedApplications[0]
+             const getSolutionName = (type: string | null) => {
+                switch(type) {
+                    case 'blog-reporter': return '기자단'
+                    case 'blog-experience': return '체험단'
+                    case 'instagram-popular': return '인스타그램'
+                    case 'seo-optimization': return 'SEO'
+                    case 'photo-shooting': return '촬영'
+                    default: return '마케팅'
+                }
+            }
+            const solutionName = getSolutionName(app.marketing_type)
+            const dateStr = new Date(app.created_at).toISOString().split('T')[0]
+            const blogCountMatch = app.notes?.match(/블로그 리뷰 갯수:\s*(\d+)개/)
+            const blogCount = blogCountMatch ? parseInt(blogCountMatch[1], 10) : 1
+            
+            const safeName = `${solutionName}_${app.store_name}_${dateStr}_${blogCount}개`.replace(/[\/\\:*?"<>|]/g, '_')
+            filename = `${safeName}.zip`
+        } else {
+            filename = `Marketing_Applications_${new Date().toISOString().split('T')[0]}_${typedApplications.length}건.zip`
+        }
+
+        // Use encodeURIComponent for safe non-ASCII filenames
+        const encodedFilename = encodeURIComponent(filename)
+
         return new NextResponse(buffer, {
             headers: {
                 'Content-Type': 'application/zip',
-                'Content-Disposition': `attachment; filename="applications_${new Date().toISOString().split('T')[0]}.zip"`,
+                'Content-Disposition': `attachment; filename="${encodedFilename}"; filename*=UTF-8''${encodedFilename}`,
             },
         })
     } catch (error) {

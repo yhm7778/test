@@ -46,7 +46,26 @@ export async function generateZip(applications: Application[]) {
         await Promise.all(chunk.map(async (app) => {
             if (!app.photo_urls || app.photo_urls.length === 0) return
 
-            const folderName = `${app.store_name}_${new Date(app.created_at).toISOString().split('T')[0].replace(/-/g, '')}`.replace(/[\/\\:*?"<>|]/g, '_')
+            // Parse blog count for photo distribution
+            const blogCountMatch = app.notes?.match(/블로그 리뷰 갯수:\s*(\d+)개/)
+            const blogCount = blogCountMatch ? parseInt(blogCountMatch[1], 10) : 1
+
+            const getSolutionName = (type: string | null) => {
+                switch(type) {
+                    case 'blog-reporter': return '기자단'
+                    case 'blog-experience': return '체험단'
+                    case 'instagram-popular': return '인스타그램'
+                    case 'seo-optimization': return 'SEO'
+                    case 'photo-shooting': return '촬영'
+                    default: return '마케팅'
+                }
+            }
+            const solutionName = getSolutionName(app.marketing_type)
+            const dateStr = new Date(app.created_at).toISOString().split('T')[0] // YYYY-MM-DD
+            
+            // Format: (솔루션,상호명,날짜,갯수) -> Using underscores for safety
+            const folderName = `${solutionName}_${app.store_name}_${dateStr}_${blogCount}개`.replace(/[\/\\:*?"<>|]/g, '_')
+            
             const folder = zip.folder(folderName)
             if (!folder) return
 
@@ -54,8 +73,6 @@ export async function generateZip(applications: Application[]) {
             const infoContent = `
 [신청서 정보]
 상호명: ${app.store_name}
-신청일: ${new Date(app.created_at).toLocaleString()}
-신청자ID: ${app.user_id || '정보없음'}
 
 [키워드]
 대표키워드: ${app.keywords?.join(', ')}
@@ -64,16 +81,9 @@ export async function generateZip(applications: Application[]) {
 [내용]
 업체 장점 및 어필점:
 ${app.advantages}
-
-[비고]
-${app.notes}
 `.trim()
 
             folder.file('info.txt', infoContent)
-
-            // Parse blog count for photo distribution
-            const blogCountMatch = app.notes?.match(/블로그 리뷰 갯수:\s*(\d+)개/)
-            const blogCount = blogCountMatch ? parseInt(blogCountMatch[1], 10) : 1
 
             // Add photos / videos
             const photos = app.photo_urls
