@@ -1,14 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { Search, MapPin, Loader2, ArrowLeft } from 'lucide-react'
+import { Search, MapPin, Loader2, ArrowLeft, Info } from 'lucide-react'
 import Link from 'next/link'
+import { checkRank } from '../actions/rank'
 
 export default function RankCheckPage() {
     const [keyword, setKeyword] = useState('')
     const [placeName, setPlaceName] = useState('')
     const [isChecking, setIsChecking] = useState(false)
-    const [result, setResult] = useState<string | null>(null)
+    const [result, setResult] = useState<{message: string, success?: boolean} | null>(null)
 
     const handleCheck = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -17,15 +18,18 @@ export default function RankCheckPage() {
         setIsChecking(true)
         setResult(null)
 
-        // Simulate API call delay
-        await new Promise(resolve => setTimeout(resolve, 2000))
-
-        // Mock result for now
-        // In a real implementation, this would call a server action or API route
-        const mockRank = Math.floor(Math.random() * 50) + 1
-        setResult(`현재 "${keyword}" 키워드에서 "${placeName}"의 순위는 ${mockRank}위 입니다.`)
-        
-        setIsChecking(false)
+        try {
+            const data = await checkRank(keyword, placeName)
+            if (data.error) {
+                setResult({ message: data.error, success: false })
+            } else {
+                setResult({ message: data.message!, success: data.success })
+            }
+        } catch (error) {
+            setResult({ message: '알 수 없는 오류가 발생했습니다.', success: false })
+        } finally {
+            setIsChecking(false)
+        }
     }
 
     return (
@@ -86,6 +90,10 @@ export default function RankCheckPage() {
                                     placeholder="예: 마케팅식당"
                                 />
                             </div>
+                            <p className="mt-2 text-xs text-gray-500 flex items-start gap-1">
+                                <Info className="h-4 w-4 flex-shrink-0" />
+                                <span>네이버 지도에 등록된 정확한 업체명을 입력해주세요.</span>
+                            </p>
                         </div>
 
                         <div>
@@ -107,15 +115,19 @@ export default function RankCheckPage() {
                     </form>
 
                     {result && (
-                        <div className="mt-6 rounded-xl bg-blue-50 p-4 border border-blue-100 animate-fade-in">
+                        <div className={`mt-6 rounded-xl p-4 border animate-fade-in ${
+                            result.success ? 'bg-blue-50 border-blue-100' : 'bg-red-50 border-red-100'
+                        }`}>
                             <div className="flex">
                                 <div className="flex-shrink-0">
-                                    <MapPin className="h-5 w-5 text-blue-400" aria-hidden="true" />
+                                    <MapPin className={`h-5 w-5 ${result.success ? 'text-blue-400' : 'text-red-400'}`} aria-hidden="true" />
                                 </div>
                                 <div className="ml-3">
-                                    <h3 className="text-sm font-medium text-blue-800">조회 결과</h3>
-                                    <div className="mt-2 text-sm text-blue-700">
-                                        <p>{result}</p>
+                                    <h3 className={`text-sm font-medium ${result.success ? 'text-blue-800' : 'text-red-800'}`}>
+                                        {result.success ? '조회 결과' : '조회 실패'}
+                                    </h3>
+                                    <div className={`mt-2 text-sm ${result.success ? 'text-blue-700' : 'text-red-700'}`}>
+                                        <p>{result.message}</p>
                                     </div>
                                 </div>
                             </div>
