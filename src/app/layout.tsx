@@ -41,7 +41,7 @@ export default async function RootLayout({
       .select('*')
       .eq('id', session.user.id)
       .single();
-    profile = data;
+    profile = data as Database['public']['Tables']['profiles']['Row'] | null;
   }
 
   return (
