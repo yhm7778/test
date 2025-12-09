@@ -5,11 +5,7 @@ import { getClients } from '@/app/actions/admin'
 import ApplicationForm from './application-form'
 import { Loader2, User } from 'lucide-react'
 
-interface AdminApplicationCreatorProps {
-    onCancel?: () => void
-}
-
-export default function AdminApplicationCreator({ onCancel }: AdminApplicationCreatorProps) {
+export default function AdminApplicationCreator() {
     const [users, setUsers] = useState<{ id: string, username: string | null, email: string | null, role: string }[]>([])
     const [loading, setLoading] = useState(true)
     const [selectedUserId, setSelectedUserId] = useState('')
