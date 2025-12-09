@@ -182,9 +182,11 @@ export default function UserManager() {
                                                     <div className="text-sm font-medium text-gray-900">
                                                         {profile.username || '이름 없음'}
                                                     </div>
-                                                    <div className="text-sm text-gray-500">
-                                                        {profile.email?.includes('@vision.local') ? '소셜 로그인 (이메일 없음)' : profile.email}
-                                                    </div>
+                                                    {!profile.email?.includes('@vision.local') && (
+                                                        <div className="text-sm text-gray-500">
+                                                            {profile.email}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </td>
