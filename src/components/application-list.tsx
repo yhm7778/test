@@ -104,11 +104,11 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
     const handleStatusToggle = async (app: Application) => {
         const newStatus = app.status === 'completed' ? 'pending' : 'completed'
         
-        const { error, count } = await supabase
+        const { data, error } = await supabase
             .from('applications')
             .update({ status: newStatus })
             .eq('id', app.id)
-            .select('*', { count: 'exact' })
+            .select()
 
         if (error) {
             console.error('Status update error:', error)
@@ -116,7 +116,7 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
             return
         }
 
-        if (count === 0) {
+        if (!data || data.length === 0) {
             console.error('No rows updated. Possible RLS issue or missing ID.')
             alert('상태 변경에 실패했습니다. (권한 부족 또는 데이터 없음)')
             return
@@ -156,15 +156,15 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
         if (!confirm(`${targetIds.length}개의 신청서를 ${statusText} 상태로 변경하시겠습니까?`)) return
 
         try {
-            const { error, count } = await supabase
+            const { data, error } = await supabase
                 .from('applications')
                 .update({ status })
                 .in('id', targetIds)
-                .select('*', { count: 'exact' })
+                .select()
 
             if (error) throw error
 
-            if (count === 0) {
+            if (!data || data.length === 0) {
                 throw new Error('No rows updated. Possible RLS issue.')
             }
 
