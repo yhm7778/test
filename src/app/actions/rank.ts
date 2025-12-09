@@ -74,8 +74,9 @@ export async function checkRank(keyword: string, placeName: string) {
 
                     name = name.trim()
                     
+                    // Skip if no name extracted - do not force match with placeName
                     if (!name) {
-                        name = placeName; // Fallback to user input if name extraction failed completely
+                        return; // Skip this element
                     }
 
                     // Clean up name for comparison
