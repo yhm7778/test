@@ -11,7 +11,7 @@ import { useRouter } from 'next/navigation'
 import ApplicationForm from './application-form'
 
 type Application = Database['public']['Tables']['applications']['Row']
-// type ApplicationUpdate = Database['public']['Tables']['applications']['Update']
+type ApplicationUpdate = Database['public']['Tables']['applications']['Update']
 
 interface ApplicationListProps {
     initialApplications: Application[]
@@ -61,6 +61,9 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
     // Filtering logic
     const filteredApplications = useMemo(() => {
         return applications.filter(app => {
+            // Hide hidden applications for non-admins
+            if (!isAdmin && app.is_hidden) return false
+
             // Search term filter
             const matchesSearch = 
                 app.store_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -79,7 +82,7 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
 
             return matchesSearch && matchesDate
         })
-    }, [applications, searchTerm, startDate, endDate])
+    }, [applications, searchTerm, startDate, endDate, isAdmin])
 
     // Score Calculation
     const getScore = (type: string | null) => {
@@ -101,10 +104,17 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
     // Status Toggle
     const handleStatusToggle = async (app: Application) => {
         const newStatus = app.status === 'completed' ? 'pending' : 'completed'
+        const updates: ApplicationUpdate = { status: newStatus }
+        
+        if (newStatus === 'completed') {
+            updates.completion_date = new Date().toISOString()
+        } else {
+            updates.completion_date = null
+        }
         
         const { data, error } = await supabase
             .from('applications')
-            .update({ status: newStatus })
+            .update(updates)
             .eq('id', app.id)
             .select()
 
@@ -127,7 +137,7 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
         }
 
         setApplications(prev => prev.map(p => 
-            p.id === app.id ? { ...p, status: newStatus } : p
+            p.id === app.id ? { ...p, ...updates } : p
         ))
         
         // Refresh server data
@@ -154,9 +164,16 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
         if (!confirm(`${targetIds.length}개의 신청서를 ${statusText} 상태로 변경하시겠습니까?`)) return
 
         try {
+            const updates: ApplicationUpdate = { status }
+            if (status === 'completed') {
+                updates.completion_date = new Date().toISOString()
+            } else {
+                updates.completion_date = null
+            }
+
             const { data, error } = await supabase
                 .from('applications')
-                .update({ status })
+                .update(updates)
                 .in('id', targetIds)
                 .select()
 
@@ -175,7 +192,7 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
             }
 
             setApplications(prev => prev.map(app => 
-                targetIds.includes(app.id) ? { ...app, status } : app
+                targetIds.includes(app.id) ? { ...app, ...updates } : app
             ))
             setSelectedIds([]) // Optional: Clear selection after action
             
@@ -201,6 +218,26 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
             setSelectedIds(selectedIds.filter(prevId => prevId !== id))
         } else {
             setSelectedIds([...selectedIds, id])
+        }
+    }
+
+    // Hide handler (Client side delete)
+    const handleHide = async (id: string) => {
+        if (!confirm('신청서를 삭제하시겠습니까? (삭제된 신청서는 복구할 수 없습니다)')) return
+
+        try {
+            const { error } = await supabase
+                .from('applications')
+                .update({ is_hidden: true })
+                .eq('id', id)
+
+            if (error) throw error
+
+            setApplications(prev => prev.filter(app => app.id !== id))
+            alert('삭제되었습니다.')
+        } catch (error) {
+            console.error('Hide error:', error)
+            alert('삭제 중 오류가 발생했습니다.')
         }
     }
 
@@ -489,14 +526,14 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <div className="flex items-center justify-end gap-2">
-                                                <button
+                                                <button 
                                                     onClick={() => setViewingApp(app)}
                                                     className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
                                                     title="상세보기"
                                                 >
                                                     <Eye className="h-4 w-4" />
                                                 </button>
-                                                {isAdmin && (
+                                                {isAdmin ? (
                                                 <button
                                                     onClick={() => handleDelete([app.id])}
                                                     className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
@@ -504,6 +541,16 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
                                                 >
                                                     <Trash2 className="h-4 w-4" />
                                                 </button>
+                                                ) : (
+                                                    app.status === 'completed' && (
+                                                    <button
+                                                        onClick={() => handleHide(app.id)}
+                                                        className="text-gray-400 hover:text-red-600 p-1 rounded hover:bg-red-50"
+                                                        title="삭제"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </button>
+                                                    )
                                                 )}
                                             </div>
                                         </td>

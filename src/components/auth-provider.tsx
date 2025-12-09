@@ -59,6 +59,7 @@ export function AuthProvider({
             username: initialSession.user.user_metadata?.username ?? initialSession.user.email?.split('@')[0] ?? null,
             role: metadataRole ?? 'client',
             created_at: new Date().toISOString(),
+            scheduled_deletion_at: null,
         }
     }
 
@@ -100,6 +101,7 @@ export function AuthProvider({
                     username: session.user.user_metadata?.username ?? session.user.email?.split('@')[0] ?? null,
                     role: metadataRole ?? 'client',
                     created_at: new Date().toISOString(),
+                    scheduled_deletion_at: null,
                 }
                 : null
 

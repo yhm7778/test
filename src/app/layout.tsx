@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/components/auth-provider";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
+import AccountRecoveryModal from "@/components/account-recovery-modal";
 import "@/lib/client-security";
 import { createClient } from "@/utils/supabase/server";
 import { Database } from "@/types/supabase";
@@ -50,6 +51,7 @@ export default async function RootLayout({
         className={`${inter.variable} ${notoSansKr.variable} antialiased font-sans min-h-screen flex flex-col bg-white`}
       >
         <AuthProvider initialSession={session} initialProfile={profile}>
+          <AccountRecoveryModal />
           <Header />
           {/* 
             Standardized Container:

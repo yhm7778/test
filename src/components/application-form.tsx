@@ -13,9 +13,10 @@ interface ApplicationFormProps {
     initialData?: Database['public']['Tables']['applications']['Row']
     readOnly?: boolean
     type?: string
+    targetUserId?: string
 }
 
-export default function ApplicationForm({ initialData, readOnly = false, type }: ApplicationFormProps) {
+export default function ApplicationForm({ initialData, readOnly = false, type, targetUserId }: ApplicationFormProps) {
     const parseBlogCount = (notes: string | null) => {
         if (!notes) return ''
         const match = notes.match(/블로그 리뷰 갯수:\s*(\d+)개/)
@@ -27,6 +28,8 @@ export default function ApplicationForm({ initialData, readOnly = false, type }:
             case 'blog-reporter': return '블로그 기자단 포스팅 신청서'
             case 'blog-experience': return '블로그 체험단 포스팅 신청서'
             case 'instagram-popular': return '인스타그램 인기게시물 포스팅 신청서'
+            case 'seo-optimization': return 'SEO 최적화작업'
+            case 'photo-shooting': return '사진촬영'
             case 'etc': return '기타사항 포스팅 신청서'
             default: return '마케팅 신청서'
         }
@@ -37,10 +40,14 @@ export default function ApplicationForm({ initialData, readOnly = false, type }:
             case 'blog-reporter': return '전문 기자가 작성하는 고품질 리뷰를 신청하세요.'
             case 'blog-experience': return '실제 체험을 바탕으로 한 생생한 후기를 신청하세요.'
             case 'instagram-popular': return '인스타그램 인기게시물 노출을 통해 홍보 효과를 극대화하세요.'
+            case 'seo-optimization': return '최초 계약 후 바로 진행되는 SEO 최적화 작업입니다.'
+            case 'photo-shooting': return '사진촬영 기사님과 일정 조율 후 진행되는 사진촬영입니다.'
             case 'etc': return '기타 마케팅 문의사항을 남겨주세요.'
             default: return '비전온라인마케팅 신청서입니다.'
         }
     }
+
+    const isSimpleForm = type === 'seo-optimization' || type === 'photo-shooting'
 
     const [storeName, setStoreName] = useState(initialData?.store_name || '')
     const [photos, setPhotos] = useState<File[]>([])
@@ -68,30 +75,33 @@ export default function ApplicationForm({ initialData, readOnly = false, type }:
             if (!storeName.trim()) {
                 throw new Error('상호명을 입력해주세요.')
             }
-            if (!blogCount.trim() || Number.isNaN(Number(blogCount)) || Number(blogCount) <= 0) {
-                throw new Error('발행할 블로그 리뷰 갯수를 입력해주세요.')
-            }
-            if (photos.length === 0) {
-                throw new Error('최소 1장의 사진 또는 동영상을 업로드해주세요.')
-            }
-            if (!keyword1.trim() || !keyword2.trim()) {
-                throw new Error('대표키워드 2개를 모두 입력해주세요.')
-            }
-            if (!advantages.trim()) {
-                throw new Error('업체 장점 및 어필점을 입력해주세요.')
-            }
-            if (!contentKeywords.trim()) {
-                throw new Error('본문 강조키워드를 입력해주세요.')
-            }
-            if (!agreedToGuidelines) {
-                throw new Error('주의사항을 확인하고 동의해주세요.')
-            }
 
-            // Validate files
-            for (const photo of photos) {
-                const validation = validateFile(photo)
-                if (!validation.valid) {
-                    throw new Error(validation.error)
+            if (!isSimpleForm) {
+                if (!blogCount.trim() || Number.isNaN(Number(blogCount)) || Number(blogCount) <= 0) {
+                    throw new Error('발행할 블로그 리뷰 갯수를 입력해주세요.')
+                }
+                if (photos.length === 0) {
+                    throw new Error('최소 1장의 사진 또는 동영상을 업로드해주세요.')
+                }
+                if (!keyword1.trim() || !keyword2.trim()) {
+                    throw new Error('대표키워드 2개를 모두 입력해주세요.')
+                }
+                if (!advantages.trim()) {
+                    throw new Error('업체 장점 및 어필점을 입력해주세요.')
+                }
+                if (!contentKeywords.trim()) {
+                    throw new Error('본문 강조키워드를 입력해주세요.')
+                }
+                if (!agreedToGuidelines) {
+                    throw new Error('주의사항을 확인하고 동의해주세요.')
+                }
+
+                // Validate files
+                for (const photo of photos) {
+                    const validation = validateFile(photo)
+                    if (!validation.valid) {
+                        throw new Error(validation.error)
+                    }
                 }
             }
 
@@ -143,16 +153,24 @@ export default function ApplicationForm({ initialData, readOnly = false, type }:
 
             const photoUrls = await Promise.all(uploadPromises)
 
+            // Construct notes
+            let finalNotes = ''
+            if (isSimpleForm) {
+                finalNotes = advantages // Use advantages field as general notes for simple form
+            } else {
+                finalNotes = `블로그 리뷰 갯수: ${sanitizeHtml(blogCount.trim())}개\n주의사항 확인 및 동의 완료`
+            }
+
             // Insert application with timeout
             const insertPromise = supabase
                 .from('applications')
                 .insert({
-                    user_id: user?.id || null,
+                    user_id: targetUserId || user?.id || null,
                     store_name: sanitizeHtml(storeName),
-                    keywords: [sanitizeHtml(keyword1.trim()), sanitizeHtml(keyword2.trim())],
+                    keywords: isSimpleForm ? [] : [sanitizeHtml(keyword1.trim()), sanitizeHtml(keyword2.trim())],
                     advantages: sanitizeHtml(advantages),
-                    tags: contentKeywords.split(',').map(k => sanitizeHtml(k.trim())).filter(k => k),
-                    notes: `블로그 리뷰 갯수: ${sanitizeHtml(blogCount.trim())}개\n주의사항 확인 및 동의 완료`,
+                    tags: isSimpleForm ? [] : contentKeywords.split(',').map(k => sanitizeHtml(k.trim())).filter(k => k),
+                    notes: finalNotes,
                     photo_urls: photoUrls,
                     marketing_type: type?.replace(/-/g, '_') || null,
                     status: 'pending',
@@ -211,6 +229,7 @@ export default function ApplicationForm({ initialData, readOnly = false, type }:
                 </div>
 
                 {/* 발행할 블로그 리뷰 갯수 */}
+                {!isSimpleForm && (
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
                         ■ 발행 할 블로그 리뷰 갯수 (N개) <span className="text-red-500">*</span>
@@ -227,8 +246,10 @@ export default function ApplicationForm({ initialData, readOnly = false, type }:
                     />
                     {!readOnly && <p className="mt-2 text-xs text-gray-500">체크한 N개 만큼 파일을 분류해 주시면 작업 속도가 빨라집니다.</p>}
                 </div>
+                )}
 
                 {/* 사진 */}
+                {!isSimpleForm && (
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
                         ■ 사진 : (이미지 기입, 동영상) <span className="text-red-500">*</span>
@@ -240,8 +261,10 @@ export default function ApplicationForm({ initialData, readOnly = false, type }:
                         readOnly={readOnly}
                     />
                 </div>
+                )}
 
                 {/* 대표키워드 2개 */}
+                {!isSimpleForm && (
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
                         ■ 대표키워드 (제목들어갈 키워드 2개) <span className="text-red-500">*</span>
@@ -269,24 +292,26 @@ export default function ApplicationForm({ initialData, readOnly = false, type }:
                         />
                     </div>
                 </div>
+                )}
 
                 {/* 업체 장점 및 어필점 */}
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                        ■ 업체 장점 및 어필점 등 <span className="text-red-500">*</span>
+                        ■ {isSimpleForm ? '작업 내용 및 메모' : '업체 장점 및 어필점 등'} <span className={isSimpleForm ? "" : "text-red-500"}>{isSimpleForm ? "" : "*"}</span>
                     </label>
                     <textarea
                         value={advantages}
                         onChange={(e) => setAdvantages(e.target.value)}
                         className="input-field min-h-[100px] resize-y disabled:bg-gray-100 disabled:text-gray-500"
-                        placeholder="신메뉴가 출시된 점 어필해주세요"
-                        required
+                        placeholder={isSimpleForm ? "작업 관련 메모를 입력하세요." : "신메뉴가 출시된 점 어필해주세요"}
+                        required={!isSimpleForm}
                         maxLength={1000}
                         disabled={readOnly}
                     />
                 </div>
 
                 {/* 본문 강조키워드 */}
+                {!isSimpleForm && (
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
                         ■ 본문 강조키워드 <span className="text-red-500">*</span>
@@ -302,9 +327,10 @@ export default function ApplicationForm({ initialData, readOnly = false, type }:
                         disabled={readOnly}
                     />
                 </div>
+                )}
 
                 {/* 주의사항 체크박스 */}
-                {!readOnly && (
+                {!readOnly && !isSimpleForm && (
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                             ■ 주의사항 <span className="text-red-500">*</span>

@@ -16,6 +16,7 @@ export interface Database {
           username: string | null
           role: 'admin' | 'staff' | 'client'
           created_at: string
+          scheduled_deletion_at: string | null
         }
         Insert: {
           id: string
@@ -23,6 +24,7 @@ export interface Database {
           username?: string | null
           role?: 'admin' | 'staff' | 'client'
           created_at?: string
+          scheduled_deletion_at?: string | null
         }
         Update: {
           id?: string
@@ -30,6 +32,7 @@ export interface Database {
           username?: string | null
           role?: 'admin' | 'staff' | 'client'
           created_at?: string
+          scheduled_deletion_at?: string | null
         }
         Relationships: []
       }
@@ -48,6 +51,9 @@ export interface Database {
           expire_at: string | null
           status: string
           marketing_type: string | null
+          completion_date: string | null
+          is_hidden: boolean
+          files_deleted: boolean
         }
         Insert: {
           id?: string
@@ -63,6 +69,9 @@ export interface Database {
           expire_at?: string | null
           status?: string
           marketing_type?: string | null
+          completion_date?: string | null
+          is_hidden?: boolean
+          files_deleted?: boolean
         }
         Update: {
           id?: string
@@ -78,6 +87,9 @@ export interface Database {
           expire_at?: string | null
           status?: string
           marketing_type?: string | null
+          completion_date?: string | null
+          is_hidden?: boolean
+          files_deleted?: boolean
         }
         Relationships: []
       }
