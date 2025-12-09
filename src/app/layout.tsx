@@ -6,6 +6,7 @@ import Header from "@/components/header";
 import Footer from "@/components/footer";
 import "@/lib/client-security";
 import { createClient } from "@/utils/supabase/server";
+import { Database } from "@/types/supabase";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -33,12 +34,22 @@ export default async function RootLayout({
     data: { session },
   } = await supabase.auth.getSession();
 
+  let profile = null;
+  if (session?.user) {
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', session.user.id)
+      .single();
+    profile = data;
+  }
+
   return (
     <html lang="ko" suppressHydrationWarning>
       <body
         className={`${inter.variable} ${notoSansKr.variable} antialiased font-sans min-h-screen flex flex-col bg-white`}
       >
-        <AuthProvider initialSession={session}>
+        <AuthProvider initialSession={session} initialProfile={profile}>
           <Header />
           {/* 
             Standardized Container:

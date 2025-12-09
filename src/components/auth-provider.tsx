@@ -22,16 +22,19 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ 
     children, 
-    initialSession = null 
+    initialSession = null,
+    initialProfile = null
 }: { 
     children: React.ReactNode
     initialSession?: Session | null
+    initialProfile?: Profile | null
 }) {
     const [user, setUser] = useState<User | null>(initialSession?.user ?? null)
     const [session, setSession] = useState<Session | null>(initialSession)
     
-    // Initialize profile from initialSession metadata if available to speed up first render
+    // Initialize profile from initialProfile (server-fetched) or metadata
     const getInitialProfile = (): Profile | null => {
+        if (initialProfile) return initialProfile
         if (!initialSession?.user) return null
         
         const normalizeRole = (role: unknown): Profile['role'] | undefined => {
@@ -199,6 +202,11 @@ export function AuthProvider({
         const timeoutMs = 4000
 
         try {
+            // Fast client-side cleanup first
+            if (typeof sessionStorage !== 'undefined') {
+                sessionStorage.clear()
+            }
+            
             const signOutTasks = Promise.allSettled([
                 supabase.auth.signOut(),
                 serverSignOut(),
@@ -211,13 +219,8 @@ export function AuthProvider({
         } catch (error) {
             console.error('Logout failed', error)
         } finally {
-            // Always clear local state even if network/logout failed/timed out
-            setUser(null)
-            setSession(null)
-            setProfile(null)
-            router.replace('/')
-            router.refresh()
-            setIsSigningOut(false)
+            // Hard navigation for fastest state reset
+            window.location.href = '/'
         }
     }
 
