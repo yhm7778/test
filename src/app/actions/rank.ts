@@ -73,6 +73,10 @@ export async function checkRank(keyword: string, placeName: string) {
                     }
 
                     name = name.trim()
+                    
+                    if (!name) {
+                        name = placeName; // Fallback to user input if name extraction failed completely
+                    }
 
                     // Clean up name for comparison
                     const currentNameClean = name.replace(/\s+/g, '').toLowerCase()
@@ -100,7 +104,7 @@ export async function checkRank(keyword: string, placeName: string) {
             return { 
                 success: true, 
                 rank: organicRank, 
-                message: `현재 "${keyword}" 검색 결과(통합검색)에서 "${foundName}"은(는) ${organicRank}위 입니다.` 
+                message: `현재 "${foundName}"은(는) ${organicRank}위 입니다.` 
             }
         }
 
@@ -110,7 +114,7 @@ export async function checkRank(keyword: string, placeName: string) {
             return {
                 success: true,
                 rank: deepResult.rank,
-                message: `통합검색 상위에는 없지만, 지도 순위 ${deepResult.page}페이지 ${deepResult.rank}위에서 "${deepResult.name}"을(를) 찾았습니다.${foundAd ? ' (통합검색에서는 광고로 노출 중)' : ''}`
+                message: `현재 "${deepResult.name}"은(는) ${deepResult.rank}위 입니다.${foundAd ? ' (통합검색에서는 광고로 노출 중)' : ''}`
             }
         }
 
@@ -118,12 +122,12 @@ export async function checkRank(keyword: string, placeName: string) {
             return { 
                 success: true, 
                 rank: -1, 
-                message: `"${foundName}"은(는) 발견되었으나 "광고" 영역에만 노출되고 있어 실제 순위를 파악할 수 없습니다.` 
+                message: `"${foundName}"은(는) 광고 영역에만 노출되고 있어 실제 순위를 파악할 수 없습니다.` 
             }
         } else {
             return { 
                 success: false, 
-                message: `검색 결과 전체(최대 100페이지)에서 "${placeName}"을(를) 찾을 수 없습니다.` 
+                message: `"${placeName}"을(를) 찾을 수 없습니다.` 
             }
         }
 
