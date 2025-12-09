@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Noto_Sans_KR } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { AuthProvider } from "@/components/auth-provider";
 import Header from "@/components/header";
@@ -65,6 +66,7 @@ export default async function RootLayout({
           </main>
           <Footer />
         </AuthProvider>
+        <Analytics />
       </body>
     </html>
   );
