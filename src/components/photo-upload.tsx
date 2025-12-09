@@ -89,7 +89,7 @@ const SupabaseMedia = ({
 
     if (mediaType === 'video') {
         return (
-            <div className="relative w-full h-full">
+            <div className="relative w-full h-full flex items-center justify-center">
                 <video
                     src={currentUrl}
                     className={className}
@@ -111,7 +111,7 @@ const SupabaseMedia = ({
     }
 
     return (
-        <div className="relative w-full h-full">
+        <div className="relative w-full h-full flex items-center justify-center">
             <img
                 src={currentUrl}
                 alt={alt || 'Image'}

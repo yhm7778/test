@@ -331,7 +331,7 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
                                     placeholder="상호명, 키워드, ID 검색"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="input-field pl-9 py-1.5 text-sm w-full lg:w-80"
+                                    className="input-field pl-9 py-1.5 text-sm w-full sm:w-80"
                                 />
                             </div>
                         </div>
@@ -469,7 +469,7 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
                                             </button>
                                         </td>
                                         )}
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500" suppressHydrationWarning>
                                             {format(parseISO(app.created_at), 'yyyy-MM-dd HH:mm', { locale: ko })}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">

@@ -234,7 +234,7 @@ export default function StaffManager() {
                                                     {staff.role === 'admin' ? '관리자' : '직원'}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500" suppressHydrationWarning>
                                                 {staff.created_at ? new Date(staff.created_at).toLocaleDateString('ko-KR') : '-'}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm">

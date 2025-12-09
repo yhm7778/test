@@ -62,7 +62,7 @@ export default function AdminApplicationCreator({ onCancel }: AdminApplicationCr
                             <option value="">고객을 선택해주세요</option>
                             {users.map(user => (
                                 <option key={user.id} value={user.id}>
-                                    {user.username || user.email} ({user.role === 'client' ? '클라이언트' : user.role})
+                                    {user.username || user.email} ({user.role === 'client' ? '일반' : user.role === 'admin' ? '관리자' : user.role === 'staff' ? '직원' : user.role})
                                 </option>
                             ))}
                         </select>

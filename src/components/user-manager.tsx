@@ -189,21 +189,26 @@ export default function UserManager() {
                                                     placeholder="10"
                                                 />
                                                 <span className="text-sm text-gray-500">회</span>
+                                                <button
+                                                    onClick={() => saveLimit(profile)}
+                                                    disabled={updatingId === profile.id || limitValues[profile.id] === String(profile.max_requests ?? 10)}
+                                                    className={`ml-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1
+                                                        ${limitValues[profile.id] !== String(profile.max_requests ?? 10)
+                                                            ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
+                                                            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                        }`}
+                                                >
+                                                    {updatingId === profile.id ? (
+                                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                                    ) : (
+                                                        <Save className="h-3 w-3" />
+                                                    )}
+                                                    저장
+                                                </button>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            <button
-                                                onClick={() => saveLimit(profile)}
-                                                disabled={updatingId === profile.id}
-                                                className="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-md transition-colors disabled:opacity-50 flex items-center gap-1 ml-auto"
-                                            >
-                                                {updatingId === profile.id ? (
-                                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                                ) : (
-                                                    <Save className="h-4 w-4" />
-                                                )}
-                                                저장
-                                            </button>
+                                            {/* 기존 관리 버튼 영역 (필요 시 다른 기능 추가 가능) */}
                                         </td>
                                     </tr>
                                 ))

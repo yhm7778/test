@@ -311,6 +311,11 @@ export default function ApplicationForm({ initialData, readOnly = false, type, t
                         initialUrls={initialData?.photo_urls || []}
                         readOnly={readOnly}
                     />
+                    {!readOnly && blogCount && !isNaN(Number(blogCount)) && Number(blogCount) > 0 && (
+                        <p className="mt-2 text-sm font-medium text-red-600 bg-red-50 p-3 rounded-md border border-red-100">
+                            * 블로그 1건당 최소 5장의 사진이 필요합니다. (신청하신 {blogCount}건 발행을 위해 최소 {Number(blogCount) * 5}장의 사진이 필요합니다)
+                        </p>
+                    )}
                 </div>
                 )}
 
