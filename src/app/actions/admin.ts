@@ -23,6 +23,7 @@ export async function getClients() {
 
     // Use Service Role if available to bypass RLS, otherwise use authenticated client
     let adminSupabase: SupabaseClient<Database> | Awaited<ReturnType<typeof createClient>> = supabase
+    let warning: string | undefined;
     if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
         adminSupabase = createSupabaseClient<Database>(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -34,6 +35,9 @@ export async function getClients() {
                 }
             }
         )
+    } else {
+        console.warn('SUPABASE_SERVICE_ROLE_KEY is missing. RLS bypassing will not work.')
+        warning = 'Service Role Key가 설정되지 않아 전체 사용자 목록을 불러올 수 없습니다. (RLS 제한됨)';
     }
 
     // Fetch clients
@@ -44,7 +48,7 @@ export async function getClients() {
 
     if (error) return { error: error.message }
 
-    return { data: clients }
+    return { data: clients, warning }
 }
 
 export async function updateUserLimit(userId: string, limit: number) {

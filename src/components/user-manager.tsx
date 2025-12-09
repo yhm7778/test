@@ -15,6 +15,8 @@ export default function UserManager() {
     const [searchTerm, setSearchTerm] = useState('')
     const [updatingId, setUpdatingId] = useState<string | null>(null)
     const [limitValues, setLimitValues] = useState<{[key: string]: string}>({})
+    const [showInternal, setShowInternal] = useState(false)
+    const [warning, setWarning] = useState<string | null>(null)
 
     // Remove client-side supabase instance
     // const supabase = createClient()
@@ -23,9 +25,15 @@ export default function UserManager() {
         setIsLoading(true)
         try {
             // Use Server Action instead of client-side fetch
-            const { data, error } = await getClients()
+            const { data, error, warning: warningMsg } = await getClients()
             
             if (error) throw new Error(error)
+
+            if (warningMsg) {
+                setWarning(warningMsg)
+            } else {
+                setWarning(null)
+            }
 
             if (data) {
                 // Type assertion for data from Server Action
@@ -84,7 +92,7 @@ export default function UserManager() {
     }
 
     const filteredProfiles = profiles.filter(p => 
-        !p.email?.includes('@vision.local') && (
+        (showInternal || !p.email?.includes('@vision.local')) && (
             (p.email?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
             (p.username?.toLowerCase() || '').includes(searchTerm.toLowerCase())
         )
@@ -92,6 +100,22 @@ export default function UserManager() {
 
     return (
         <div className="space-y-4">
+            {warning && (
+                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                    <div className="flex">
+                        <div className="flex-shrink-0">
+                            <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                        </div>
+                        <div className="ml-3">
+                            <p className="text-sm text-yellow-700">
+                                {warning}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="relative w-full sm:w-64">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -103,14 +127,25 @@ export default function UserManager() {
                         className="input-field pl-9 py-2 text-sm w-full"
                     />
                 </div>
-                <button 
-                    onClick={fetchProfiles} 
-                    className="btn-secondary py-2 px-3 text-sm flex items-center gap-2"
-                    disabled={isLoading}
-                >
-                    <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                    새로고침
-                </button>
+                <div className="flex items-center gap-2">
+                    <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                        <input 
+                            type="checkbox" 
+                            checked={showInternal} 
+                            onChange={(e) => setShowInternal(e.target.checked)}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        내부 계정 보기
+                    </label>
+                    <button 
+                        onClick={fetchProfiles} 
+                        className="btn-secondary py-2 px-3 text-sm flex items-center gap-2"
+                        disabled={isLoading}
+                    >
+                        <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                        새로고침
+                    </button>
+                </div>
             </div>
 
             <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
