@@ -26,6 +26,7 @@ export default function RankCheckPage() {
                 setResult({ message: data.message!, success: data.success })
             }
         } catch (error) {
+            console.error(error)
             setResult({ message: '알 수 없는 오류가 발생했습니다.', success: false })
         } finally {
             setIsChecking(false)
