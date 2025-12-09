@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Database } from '@/types/supabase'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { format, parseISO, isWithinInterval, startOfDay, endOfDay } from 'date-fns'
 import { ko } from 'date-fns/locale'
 import { Download, Search, Trash2, X, Eye, CheckSquare, Square, Loader2 } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
+import { useRouter } from 'next/navigation'
 import JSZip from 'jszip'
 import ApplicationForm from './application-form'
 import { sanitizeFilename } from '@/lib/security'
@@ -30,6 +31,34 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
     const [isDeleting, setIsDeleting] = useState(false)
     
     const supabase = createClient() as SupabaseClient<Database>
+    const router = useRouter()
+    const [isRefreshing, setIsRefreshing] = useState(false)
+
+    // Sync with server data when it changes
+    useEffect(() => {
+        setApplications(initialApplications)
+    }, [initialApplications])
+
+    const refreshData = async () => {
+        setIsRefreshing(true)
+        try {
+            router.refresh()
+            // Also manual fetch for immediate update
+            const { data } = await supabase
+                .from('applications')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(50)
+            
+            if (data) {
+                setApplications(data as Application[])
+            }
+        } catch (error) {
+            console.error('Refresh error:', error)
+        } finally {
+            setIsRefreshing(false)
+        }
+    }
 
     // Filtering logic
     const filteredApplications = useMemo(() => {
@@ -75,14 +104,21 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
     const handleStatusToggle = async (app: Application) => {
         const newStatus = app.status === 'completed' ? 'pending' : 'completed'
         
-        const { error } = await supabase
+        const { error, count } = await supabase
             .from('applications')
             .update({ status: newStatus })
             .eq('id', app.id)
+            .select('*', { count: 'exact' })
 
         if (error) {
             console.error('Status update error:', error)
             alert('상태 변경 중 오류가 발생했습니다.')
+            return
+        }
+
+        if (count === 0) {
+            console.error('No rows updated. Possible RLS issue or missing ID.')
+            alert('상태 변경에 실패했습니다. (권한 부족 또는 데이터 없음)')
             return
         }
 
@@ -95,35 +131,58 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
         setApplications(prev => prev.map(p => 
             p.id === app.id ? { ...p, status: newStatus } : p
         ))
+        
+        // Refresh server data
+        refreshData()
     }
 
     // Bulk Status Update
     const handleBulkStatusUpdate = async (status: 'completed' | 'pending') => {
         if (selectedIds.length === 0) return
         
+        // Filter out items that already have the target status
+        const targetIds = selectedIds.filter(id => {
+            const app = applications.find(a => a.id === id)
+            return app && app.status !== status
+        })
+
         const statusText = status === 'completed' ? '완료' : '미완료'
-        if (!confirm(`${selectedIds.length}개의 신청서를 ${statusText} 상태로 변경하시겠습니까?`)) return
+
+        if (targetIds.length === 0) {
+            alert(`선택한 모든 항목이 이미 '${statusText}' 상태입니다.`)
+            return
+        }
+        
+        if (!confirm(`${targetIds.length}개의 신청서를 ${statusText} 상태로 변경하시겠습니까?`)) return
 
         try {
-            const { error } = await supabase
+            const { error, count } = await supabase
                 .from('applications')
                 .update({ status })
-                .in('id', selectedIds)
+                .in('id', targetIds)
+                .select('*', { count: 'exact' })
 
             if (error) throw error
 
+            if (count === 0) {
+                throw new Error('No rows updated. Possible RLS issue.')
+            }
+
             if (status === 'completed') {
                 // Kakao Notification Stub for Bulk
-                console.log(`[Kakao Notification] Sending completion notifications to ${selectedIds.length} users`)
-                alert(`${selectedIds.length}개의 신청서가 완료 처리되었습니다. (카카오톡 알림 발송 - Stub)`)
+                console.log(`[Kakao Notification] Sending completion notifications to ${targetIds.length} users`)
+                alert(`${targetIds.length}개의 신청서가 완료 처리되었습니다. (카카오톡 알림 발송 - Stub)`)
             } else {
-                alert(`${selectedIds.length}개의 신청서가 미완료 처리되었습니다.`)
+                alert(`${targetIds.length}개의 신청서가 미완료 처리되었습니다.`)
             }
 
             setApplications(prev => prev.map(app => 
-                selectedIds.includes(app.id) ? { ...app, status } : app
+                targetIds.includes(app.id) ? { ...app, status } : app
             ))
             setSelectedIds([]) // Optional: Clear selection after action
+            
+            // Refresh server data with a small delay to ensure DB propagation
+            refreshData()
         } catch (error) {
             console.error('Bulk status update error:', error)
             alert('상태 변경 중 오류가 발생했습니다.')
@@ -329,16 +388,25 @@ ${app.notes}
                         <button
                             onClick={() => handleBulkStatusUpdate('pending')}
                             disabled={selectedIds.length === 0}
-                            className="btn-secondary py-2 px-3 text-sm flex items-center gap-2 disabled:opacity-50"
+                            className="btn-secondary py-2 px-3 text-sm flex items-center gap-2 disabled:opacity-50 bg-yellow-600 hover:bg-yellow-700 border-yellow-600 text-white"
                         >
                             <X className="h-4 w-4" />
                             선택 미완료
                         </button>
                         <div className="w-px h-6 bg-gray-300 mx-1 hidden sm:block"></div>
                         <button
+                            onClick={refreshData}
+                            disabled={isRefreshing}
+                            className="btn-secondary py-2 px-3 text-sm flex items-center gap-2 disabled:opacity-50"
+                            title="데이터 새로고침"
+                        >
+                            <Loader2 className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                            {isRefreshing ? '갱신 중...' : '새로고침'}
+                        </button>
+                        <button
                             onClick={() => handleDelete(selectedIds)}
                             disabled={selectedIds.length === 0 || isDeleting}
-                            className="btn-danger py-2 px-3 text-sm flex items-center gap-2 disabled:opacity-50"
+                            className="btn-danger py-2 px-3 text-sm flex items-center gap-2 disabled:opacity-50 bg-red-600 hover:bg-red-700 text-white"
                         >
                             {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                             선택 삭제
@@ -346,7 +414,7 @@ ${app.notes}
                         <button
                             onClick={handleDownloadZip}
                             disabled={!filteredApplications.length || isDownloading}
-                            className="btn-primary py-2 px-3 text-sm flex items-center gap-2 disabled:opacity-50"
+                            className="btn-primary py-2 px-3 text-sm flex items-center gap-2 disabled:opacity-50 bg-blue-600 hover:bg-blue-700 border-blue-600 text-white"
                         >
                             {isDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                             {selectedIds.length > 0 ? `${selectedIds.length}개 다운로드` : '전체 다운로드'}
