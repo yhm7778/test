@@ -5,6 +5,7 @@ import { AuthProvider } from "@/components/auth-provider";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import "@/lib/client-security";
+import { createClient } from "@/utils/supabase/server";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -22,17 +23,22 @@ export const metadata: Metadata = {
   description: "Marketing Application for Vision Inc.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const supabase = await createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
   return (
     <html lang="ko" suppressHydrationWarning>
       <body
         className={`${inter.variable} ${notoSansKr.variable} antialiased font-sans min-h-screen flex flex-col bg-white`}
       >
-        <AuthProvider>
+        <AuthProvider initialSession={session}>
           <Header />
           {/* 
             Standardized Container:

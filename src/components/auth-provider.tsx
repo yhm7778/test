@@ -20,11 +20,48 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-    const [user, setUser] = useState<User | null>(null)
-    const [session, setSession] = useState<Session | null>(null)
-    const [profile, setProfile] = useState<Profile | null>(null)
-    const [isLoading, setIsLoading] = useState(true)
+export function AuthProvider({ 
+    children, 
+    initialSession = null 
+}: { 
+    children: React.ReactNode
+    initialSession?: Session | null
+}) {
+    const [user, setUser] = useState<User | null>(initialSession?.user ?? null)
+    const [session, setSession] = useState<Session | null>(initialSession)
+    
+    // Initialize profile from initialSession metadata if available to speed up first render
+    const getInitialProfile = (): Profile | null => {
+        if (!initialSession?.user) return null
+        
+        const normalizeRole = (role: unknown): Profile['role'] | undefined => {
+            if (typeof role !== 'string') return undefined
+            const value = role.trim().toLowerCase()
+            if (value === 'admin' || value === 'staff' || value === 'client') {
+                return value as Profile['role']
+            }
+            return undefined
+        }
+
+        const metadataRole =
+            normalizeRole(initialSession.user.user_metadata?.role) ||
+            normalizeRole(initialSession.user.app_metadata?.role) ||
+            (Array.isArray(initialSession.user.app_metadata?.roles)
+                ? normalizeRole(initialSession.user.app_metadata?.roles[0])
+                : undefined)
+                
+        return {
+            id: initialSession.user.id,
+            email: initialSession.user.email ?? null,
+            username: initialSession.user.user_metadata?.username ?? initialSession.user.email?.split('@')[0] ?? null,
+            role: metadataRole ?? 'client',
+            created_at: new Date().toISOString(),
+        }
+    }
+
+    const [profile, setProfile] = useState<Profile | null>(getInitialProfile())
+    // If we have an initial session, we aren't "loading" in the blocking sense
+    const [isLoading, setIsLoading] = useState(!initialSession) 
     const [isSigningOut, setIsSigningOut] = useState(false)
     const router = useRouter()
     const supabase = createClient()
