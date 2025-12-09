@@ -34,7 +34,7 @@ export default async function RootLayout({
     data: { session },
   } = await supabase.auth.getSession();
 
-  let profile = null;
+  let profile: Database['public']['Tables']['profiles']['Row'] | null = null;
   if (session?.user) {
     const { data } = await supabase
       .from('profiles')
