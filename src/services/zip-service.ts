@@ -35,55 +35,82 @@ export async function generateZip(applications: Application[]) {
         )
         : null
 
-    for (const app of applications) {
-        if (!app.photo_urls || app.photo_urls.length === 0) continue
+    // Parallel processing with concurrency limit
+    const BATCH_SIZE = 5
+    const chunks = []
+    for (let i = 0; i < applications.length; i += BATCH_SIZE) {
+        chunks.push(applications.slice(i, i + BATCH_SIZE))
+    }
 
-        const folder = zip.folder(app.store_name.replace(/[\/\\:*?"<>|]/g, '_')) // Sanitize folder name
-        if (!folder) continue
+    for (const chunk of chunks) {
+        await Promise.all(chunk.map(async (app) => {
+            if (!app.photo_urls || app.photo_urls.length === 0) return
 
-        // Add text info
-        const infoContent = `
+            const folderName = `${app.store_name}_${new Date(app.created_at).toISOString().split('T')[0].replace(/-/g, '')}`.replace(/[\/\\:*?"<>|]/g, '_')
+            const folder = zip.folder(folderName)
+            if (!folder) return
+
+            // Add text info
+            const infoContent = `
+[신청서 정보]
 상호명: ${app.store_name}
 신청일: ${new Date(app.created_at).toLocaleString()}
-키워드: ${app.keywords?.join(', ')}
-장점: ${app.advantages}
-태그: ${app.tags?.join(', ')}
-플레이스 URL: ${app.place_url}
-특이사항: ${app.notes}
-    `.trim()
+신청자ID: ${app.user_id || '정보없음'}
 
-        folder.file('info.txt', infoContent)
+[키워드]
+대표키워드: ${app.keywords?.join(', ')}
+본문강조키워드: ${app.tags?.join(', ')}
 
-        // Add photos / videos
-        for (let i = 0; i < app.photo_urls.length; i++) {
-            const url = app.photo_urls[i]
-            try {
-                let downloadUrl = url
+[내용]
+업체 장점 및 어필점:
+${app.advantages}
 
-                if (supabaseAdmin) {
-                    const objectPath = extractObjectPath(url)
-                    if (objectPath) {
-                        const { data, error } = await supabaseAdmin.storage
-                            .from('applications')
-                            .createSignedUrl(objectPath, 3600)
-                        if (!error && data?.signedUrl) {
-                            downloadUrl = data.signedUrl
+[비고]
+${app.notes}
+`.trim()
+
+            folder.file('info.txt', infoContent)
+
+            // Parse blog count for photo distribution
+            const blogCountMatch = app.notes?.match(/블로그 리뷰 갯수:\s*(\d+)개/)
+            const blogCount = blogCountMatch ? parseInt(blogCountMatch[1], 10) : 1
+
+            // Add photos / videos
+            const photos = app.photo_urls
+            await Promise.all(photos.map(async (url, i) => {
+                try {
+                    let downloadUrl = url
+
+                    if (supabaseAdmin) {
+                        const objectPath = extractObjectPath(url)
+                        if (objectPath) {
+                            const { data, error } = await supabaseAdmin.storage
+                                .from('applications')
+                                .createSignedUrl(objectPath, 3600)
+                            if (!error && data?.signedUrl) {
+                                downloadUrl = data.signedUrl
+                            }
                         }
                     }
-                }
 
-                const response = await fetch(downloadUrl)
-                if (!response.ok) {
-                    console.error(`Failed to download file (${response.status}) for ${app.store_name}: ${downloadUrl}`)
-                    continue
+                    const response = await fetch(downloadUrl)
+                    if (!response.ok) {
+                        console.error(`Failed to download file (${response.status}) for ${app.store_name}: ${downloadUrl}`)
+                        return
+                    }
+                    const arrayBuffer = await response.arrayBuffer()
+                    const extension = url.split('.').pop()?.split('?')[0] || 'jpg'
+                    
+                    // Distribute photos into N subfolders using Round-Robin
+                    const subFolderIndex = (i % blogCount) + 1
+                    const subFolder = folder.folder(`${subFolderIndex}번_블로그`)
+                    subFolder?.file(`${i + 1}.${extension}`, arrayBuffer)
+                } catch (error) {
+                    console.error(`Failed to download file for ${app.store_name}:`, error)
+                    folder.file(`error_photo_${i + 1}.txt`, 'Download failed')
                 }
-                const arrayBuffer = await response.arrayBuffer()
-                const extension = url.split('.').pop()?.split('?')[0] || 'jpg'
-                folder.file(`file_${i + 1}.${extension}`, arrayBuffer)
-            } catch (error) {
-                console.error(`Failed to download file for ${app.store_name}:`, error)
-            }
-        }
+            }))
+        }))
     }
 
     return await zip.generateAsync({ type: 'blob' })

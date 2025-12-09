@@ -8,9 +8,7 @@ import { ko } from 'date-fns/locale'
 import { Download, Search, Trash2, X, Eye, CheckSquare, Square, Loader2 } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
-import JSZip from 'jszip'
 import ApplicationForm from './application-form'
-import { sanitizeFilename } from '@/lib/security'
 
 type Application = Database['public']['Tables']['applications']['Row']
 // type ApplicationUpdate = Database['public']['Tables']['applications']['Update']
@@ -233,7 +231,7 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
     // Cost Calculation
     // const [unitPrice] = useState(10000) // Default unit price
 
-    // ZIP Download logic (Client-side)
+    // ZIP Download logic (Server-side)
     const handleDownloadZip = async () => {
         const targetIds = selectedIds.length > 0 ? selectedIds : filteredApplications.map(app => app.id)
         
@@ -246,83 +244,27 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
 
         setIsDownloading(true)
         try {
-            const zip = new JSZip()
-            const targetApps = applications.filter(app => targetIds.includes(app.id))
+            const response = await fetch('/api/zip', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ ids: targetIds }),
+            })
 
-            for (const app of targetApps) {
-                // Create folder for each store
-                // Format: StoreName_Date
-                const dateStr = format(parseISO(app.created_at), 'yyyyMMdd')
-                const folderName = sanitizeFilename(`${app.store_name}_${dateStr}`)
-                const folder = zip.folder(folderName)
-
-                if (!folder) continue
-
-                // Add info text file
-                const infoContent = `
-[신청서 정보]
-상호명: ${app.store_name}
-신청일: ${format(parseISO(app.created_at), 'yyyy-MM-dd HH:mm:ss')}
-신청자ID: ${app.user_id || '정보없음'}
-
-[키워드]
-대표키워드: ${app.keywords?.join(', ')}
-본문강조키워드: ${app.tags?.join(', ')}
-
-[내용]
-업체 장점 및 어필점:
-${app.advantages}
-
-[비고]
-${app.notes}
-`.trim()
-                folder.file('info.txt', infoContent)
-
-                // Parse blog count for photo distribution
-                const blogCountMatch = app.notes?.match(/블로그 리뷰 갯수:\s*(\d+)개/)
-                const blogCount = blogCountMatch ? parseInt(blogCountMatch[1], 10) : 1
-                
-                // Download and distribute photos
-                if (app.photo_urls && app.photo_urls.length > 0) {
-                    const photos = app.photo_urls
-                    
-                    // Parallel download
-                    await Promise.all(photos.map(async (url, index) => {
-                        try {
-                            const response = await fetch(url)
-                            const blob = await response.blob()
-                            const ext = url.split('.').pop()?.split('?')[0] || 'jpg'
-                            
-                            // Distribute photos into N subfolders using Round-Robin
-                            // This ensures more even distribution and prevents empty folders
-                            // index 0 -> folder 1
-                            // index 1 -> folder 2
-                            // ...
-                            // index 4 -> folder 5
-                            // index 5 -> folder 1
-                            const subFolderIndex = (index % blogCount) + 1
-
-                            const subFolder = folder.folder(`${subFolderIndex}번_블로그`)
-                            subFolder?.file(`${index + 1}.${ext}`, blob)
-                        } catch (err) {
-                            console.error(`Failed to download photo for ${app.store_name}:`, err)
-                            folder.file(`error_photo_${index + 1}.txt`, 'Download failed')
-                        }
-                    }))
-                }
+            if (!response.ok) {
+                throw new Error('Download failed')
             }
 
-            // Generate ZIP
-            const content = await zip.generateAsync({ type: 'blob' })
-            
-            // Trigger download
+            const blob = await response.blob()
+            const url = window.URL.createObjectURL(blob)
             const link = document.createElement('a')
-            link.href = URL.createObjectURL(content)
+            link.href = url
             link.download = `applications_${format(new Date(), 'yyyyMMdd_HHmm')}.zip`
             document.body.appendChild(link)
             link.click()
             document.body.removeChild(link)
-            window.URL.revokeObjectURL(link.href)
+            window.URL.revokeObjectURL(url)
 
         } catch (error) {
             console.error('ZIP generation error:', error)
@@ -359,7 +301,7 @@ ${app.notes}
                                 />
                             </div>
                         </div>
-                        <div className="space-y-1 flex-1">
+                        <div className="space-y-1 w-full lg:w-auto">
                             <label className="text-xs font-medium text-gray-500">검색어</label>
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -368,7 +310,7 @@ ${app.notes}
                                     placeholder="상호명, 키워드, ID 검색"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="input-field pl-9 py-1.5 text-sm w-full"
+                                    className="input-field pl-9 py-1.5 text-sm w-full lg:w-80"
                                 />
                             </div>
                         </div>
