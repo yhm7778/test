@@ -9,12 +9,14 @@ import { FileText, Instagram, MapPin, MoreHorizontal, User, ExternalLink, ArrowR
 
 type MenuItem = Database['public']['Tables']['menu_items']['Row']
 
-export default function LandingButtons() {
+export default function LandingButtons({ initialCustomMenus = [] }: { initialCustomMenus?: MenuItem[] }) {
     const { user, isLoading } = useAuth()
-    const [customMenus, setCustomMenus] = useState<MenuItem[]>([])
+    const [customMenus, setCustomMenus] = useState<MenuItem[]>(initialCustomMenus)
     const supabase = createClient()
 
     useEffect(() => {
+        if (initialCustomMenus.length > 0) return
+
         const fetchMenus = async () => {
             const { data } = await supabase
                 .from('menu_items')
@@ -26,7 +28,7 @@ export default function LandingButtons() {
             }
         }
         fetchMenus()
-    }, [supabase])
+    }, [supabase, initialCustomMenus])
 
     if (isLoading) {
         return <div className="h-96 flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div></div>

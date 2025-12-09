@@ -1,8 +1,19 @@
 import LandingButtons from '@/components/landing-buttons'
+import { createClient } from '@/utils/supabase/server'
+import { Database } from '@/types/supabase'
 
 export const dynamic = 'force-dynamic'
 
-export default function Home() {
+type MenuItem = Database['public']['Tables']['menu_items']['Row']
+
+export default async function Home() {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('menu_items')
+    .select('*')
+    .order('order', { ascending: true })
+    
+  const menuItems = data as MenuItem[] | null
 
   return (
     // Removed flex-1 and min-h hacks that cause layout shifts
@@ -20,7 +31,7 @@ export default function Home() {
           전문가의 손길로 비즈니스를 성장시킵니다
         </p>
 
-        <LandingButtons />
+        <LandingButtons initialCustomMenus={menuItems || []} />
       </div>
     </div>
   )
