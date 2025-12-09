@@ -29,20 +29,13 @@ const SupabaseMedia = ({
     const [currentUrl, setCurrentUrl] = useState(url)
     const [isRetrying, setIsRetrying] = useState(false)
     const [isDead, setIsDead] = useState(false)
-    const [mediaType, setMediaType] = useState<'image' | 'video' | 'unknown'>('unknown')
     const supabase = createClient()
     
     const isVideo = (path: string) => {
         return path.match(/\.(mp4|webm|ogg|mov|qt|avi|wmv|flv|m4v)(\?|$)/i)
     }
 
-    useEffect(() => {
-        if (isVideo(url)) {
-            setMediaType('video')
-        } else {
-            setMediaType('image')
-        }
-    }, [url])
+    const mediaType = isVideo(url) ? 'video' : 'image'
 
     const handleError = async () => {
         if (isRetrying || isDead || currentUrl !== url) return 
