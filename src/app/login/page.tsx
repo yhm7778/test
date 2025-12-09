@@ -46,9 +46,17 @@ export default function LoginPage() {
             const result = await signIn(username, password)
             if (result.error) throw new Error(result.error)
 
-            // Use router for navigation instead of hard reload
-            router.refresh()
-            router.replace('/')
+            // Force client-side session refresh to update AuthProvider immediately
+            const { data: { session } } = await supabase.auth.getSession()
+            if (session) {
+                // If we have a session, refresh the router to update server components
+                router.refresh()
+                router.replace('/')
+            } else {
+                // Fallback if session isn't immediately available (shouldn't happen on success)
+                router.refresh()
+                router.replace('/')
+            }
         } catch (error: unknown) {
             const message = error instanceof Error ? error.message : 'Unknown error'
             setError(getKoreanErrorMessage(message))
@@ -66,6 +74,10 @@ export default function LoginPage() {
             if (result.error) throw new Error(result.error)
 
             alert('회원가입이 완료되었습니다.')
+            
+            // Force client-side session refresh
+            await supabase.auth.getSession()
+            
             router.refresh()
             router.replace('/')
         } catch (error: unknown) {
