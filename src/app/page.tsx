@@ -10,7 +10,6 @@ export default function Home() {
     <div className="flex flex-col items-center justify-center py-12 sm:py-20 animate-slide-up">
       <div className="w-full max-w-3xl mx-auto text-center space-y-10">
         <div className="flex flex-col items-center gap-2">
-            <span className="text-lg font-medium text-gray-500">주식회사 비전</span>
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-gray-900 tracking-tight break-keep leading-tight">
             비전온라인마케팅
             </h1>

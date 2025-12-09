@@ -97,6 +97,39 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
         ))
     }
 
+    // Bulk Status Update
+    const handleBulkStatusUpdate = async (status: 'completed' | 'pending') => {
+        if (selectedIds.length === 0) return
+        
+        const statusText = status === 'completed' ? '완료' : '미완료'
+        if (!confirm(`${selectedIds.length}개의 신청서를 ${statusText} 상태로 변경하시겠습니까?`)) return
+
+        try {
+            const { error } = await supabase
+                .from('applications')
+                .update({ status })
+                .in('id', selectedIds)
+
+            if (error) throw error
+
+            if (status === 'completed') {
+                // Kakao Notification Stub for Bulk
+                console.log(`[Kakao Notification] Sending completion notifications to ${selectedIds.length} users`)
+                alert(`${selectedIds.length}개의 신청서가 완료 처리되었습니다. (카카오톡 알림 발송 - Stub)`)
+            } else {
+                alert(`${selectedIds.length}개의 신청서가 미완료 처리되었습니다.`)
+            }
+
+            setApplications(prev => prev.map(app => 
+                selectedIds.includes(app.id) ? { ...app, status } : app
+            ))
+            setSelectedIds([]) // Optional: Clear selection after action
+        } catch (error) {
+            console.error('Bulk status update error:', error)
+            alert('상태 변경 중 오류가 발생했습니다.')
+        }
+    }
+
     // Selection handlers
     const handleSelectAll = () => {
         if (selectedIds.length === filteredApplications.length) {
@@ -284,7 +317,24 @@ ${app.notes}
 
                     {/* Action Buttons */}
                     {isAdmin && (
-                    <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+                    <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
+                        <button
+                            onClick={() => handleBulkStatusUpdate('completed')}
+                            disabled={selectedIds.length === 0}
+                            className="btn-primary py-2 px-3 text-sm flex items-center gap-2 disabled:opacity-50 bg-green-600 hover:bg-green-700 border-green-600 text-white"
+                        >
+                            <CheckSquare className="h-4 w-4" />
+                            선택 완료
+                        </button>
+                        <button
+                            onClick={() => handleBulkStatusUpdate('pending')}
+                            disabled={selectedIds.length === 0}
+                            className="btn-secondary py-2 px-3 text-sm flex items-center gap-2 disabled:opacity-50"
+                        >
+                            <X className="h-4 w-4" />
+                            선택 미완료
+                        </button>
+                        <div className="w-px h-6 bg-gray-300 mx-1 hidden sm:block"></div>
                         <button
                             onClick={() => handleDelete(selectedIds)}
                             disabled={selectedIds.length === 0 || isDeleting}
