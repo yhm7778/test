@@ -46,12 +46,6 @@ export default function Header() {
                                 </Link>
                             )}
                             <Link
-                                href="/apply"
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-gray-900 text-white text-sm font-medium hover:bg-gray-800"
-                            >
-                                <span>신청하기</span>
-                            </Link>
-                            <Link
                                 href="/my"
                                 className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-gray-300 text-sm font-medium hover:bg-gray-50"
                             >
@@ -78,12 +72,6 @@ export default function Header() {
                         </>
                     ) : (
                         <>
-                            <Link
-                                href="/apply"
-                                className="px-4 py-1.5 rounded bg-gray-900 text-white text-sm font-medium hover:bg-gray-800"
-                            >
-                                신청하기
-                            </Link>
                             <Link
                                 href="/login"
                                 className="px-4 py-1.5 rounded border border-gray-300 text-sm font-medium hover:bg-gray-50"
@@ -119,13 +107,6 @@ export default function Header() {
                                 </Link>
                             )}
                             <Link
-                                href="/apply"
-                                className="flex items-center gap-2 px-4 py-3 rounded bg-gray-900 text-white font-medium"
-                                onClick={() => setIsMenuOpen(false)}
-                            >
-                                신청하기
-                            </Link>
-                            <Link
                                 href="/my"
                                 className="flex items-center gap-2 px-4 py-3 rounded border border-gray-200 font-medium hover:bg-gray-50"
                                 onClick={() => setIsMenuOpen(false)}
@@ -157,13 +138,6 @@ export default function Header() {
                         </>
                     ) : (
                         <>
-                            <Link
-                                href="/apply"
-                                className="block w-full text-center px-4 py-3 rounded bg-gray-900 text-white font-medium"
-                                onClick={() => setIsMenuOpen(false)}
-                            >
-                                신청하기
-                            </Link>
                             <Link
                                 href="/login"
                                 className="block w-full text-center px-4 py-3 rounded border border-gray-300 font-medium hover:bg-gray-50"

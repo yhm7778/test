@@ -31,7 +31,11 @@ const SupabaseMedia = ({
     const [isDead, setIsDead] = useState(false)
     const supabase = createClient()
     
-    const isVideo = (path: string) => path.match(/\.(mp4|webm|ogg)$/i)
+    const isVideo = (path: string) => {
+        // Check for common video extensions
+        // Also check if path contains video indicators if extension is masked (though less likely with Supabase public URLs)
+        return path.match(/\.(mp4|webm|ogg|mov|qt|avi|wmv|flv|m4v)(\?|$)/i)
+    }
 
     const handleError = async () => {
         if (isRetrying || isDead || currentUrl !== url) return 

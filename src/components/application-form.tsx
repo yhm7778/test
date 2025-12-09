@@ -58,6 +58,7 @@ export default function ApplicationForm({ initialData, readOnly = false, type, t
     const [contentKeywords, setContentKeywords] = useState(initialData?.tags?.join(', ') || '')
     const [agreedToGuidelines, setAgreedToGuidelines] = useState(!!initialData)
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 })
     const [error, setError] = useState('')
 
     const router = useRouter()
@@ -120,6 +121,8 @@ export default function ApplicationForm({ initialData, readOnly = false, type, t
             }
 
             const sanitizedFolder = sanitizeFilename(storeName.trim() || 'store')
+            setUploadProgress({ current: 0, total: photos.length })
+            let completedCount = 0
 
             // Upload photos in parallel
             const uploadPromises = photos.map(async (photo) => {
@@ -147,6 +150,9 @@ export default function ApplicationForm({ initialData, readOnly = false, type, t
                 const { data: { publicUrl } } = supabase.storage
                     .from('applications')
                     .getPublicUrl(data.path)
+
+                completedCount++
+                setUploadProgress(prev => ({ ...prev, current: completedCount }))
 
                 return publicUrl
             })
@@ -365,7 +371,11 @@ export default function ApplicationForm({ initialData, readOnly = false, type, t
                         {isSubmitting ? (
                             <>
                                 <Loader2 className="h-5 w-5 animate-spin" />
-                                <span>제출 중...</span>
+                                <span>
+                                    {uploadProgress.total > 0 
+                                        ? `업로드 중... ${uploadProgress.current}/${uploadProgress.total} (${Math.round(uploadProgress.current / uploadProgress.total * 100)}%)`
+                                        : '제출 중...'}
+                                </span>
                             </>
                         ) : (
                             <span>신청하기</span>
