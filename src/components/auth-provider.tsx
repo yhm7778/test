@@ -88,7 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         .single<Profile>()
 
                     const timeoutPromise = new Promise<{ data: null, error: { message: string } }>((resolve) => {
-                        setTimeout(() => resolve({ data: null, error: { message: 'Timeout' } }), 5000)
+                        setTimeout(() => resolve({ data: null, error: { message: 'Timeout' } }), 2000)
                     })
 
                     const { data: profileData, error } = await Promise.race([fetchProfile, timeoutPromise])

@@ -46,17 +46,9 @@ export default function LoginPage() {
             const result = await signIn(username, password)
             if (result.error) throw new Error(result.error)
 
-            // Force client-side session refresh to update AuthProvider immediately
-            const { data: { session } } = await supabase.auth.getSession()
-            if (session) {
-                // If we have a session, refresh the router to update server components
-                router.refresh()
-                router.replace('/')
-            } else {
-                // Fallback if session isn't immediately available (shouldn't happen on success)
-                router.refresh()
-                router.replace('/')
-            }
+            // Use hard navigation to ensure fresh state and cookies are applied immediately
+            // This is faster and more reliable than router.refresh() + replace() for auth state changes
+            window.location.href = '/'
         } catch (error: unknown) {
             const message = error instanceof Error ? error.message : 'Unknown error'
             setError(getKoreanErrorMessage(message))
@@ -75,11 +67,8 @@ export default function LoginPage() {
 
             alert('회원가입이 완료되었습니다.')
             
-            // Force client-side session refresh
-            await supabase.auth.getSession()
-            
-            router.refresh()
-            router.replace('/')
+            // Use hard navigation for immediate state update
+            window.location.href = '/'
         } catch (error: unknown) {
             const message = error instanceof Error ? error.message : 'Unknown error'
             setError(getKoreanErrorMessage(message))
