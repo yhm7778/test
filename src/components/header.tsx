@@ -28,8 +28,9 @@ export default function Header() {
     return (
         <header className="sticky top-0 z-50 w-full border-b bg-white">
             <div className="max-w-7xl mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
-                <Link href="/" className="flex items-center space-x-2">
-                    <span className="font-bold text-xl text-gray-900">Vision Marketing</span>
+                <Link href="/" className="flex flex-col">
+                    <span className="text-xs text-gray-500 font-medium">주식회사 비전</span>
+                    <span className="font-bold text-xl text-gray-900">비전온라인마케팅</span>
                 </Link>
 
                 {/* Desktop Navigation */}

@@ -43,6 +43,8 @@ export interface Database {
           notes: string | null
           photo_urls: string[] | null
           expire_at: string | null
+          status: string
+          marketing_type: string | null
         }
         Insert: {
           id?: string
@@ -56,6 +58,8 @@ export interface Database {
           notes?: string | null
           photo_urls?: string[] | null
           expire_at?: string | null
+          status?: string
+          marketing_type?: string | null
         }
         Update: {
           id?: string
@@ -69,6 +73,8 @@ export interface Database {
           notes?: string | null
           photo_urls?: string[] | null
           expire_at?: string | null
+          status?: string
+          marketing_type?: string | null
         }
         Relationships: []
       }

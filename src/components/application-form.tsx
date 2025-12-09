@@ -12,13 +12,34 @@ import { Database } from '@/types/supabase'
 interface ApplicationFormProps {
     initialData?: Database['public']['Tables']['applications']['Row']
     readOnly?: boolean
+    type?: string
 }
 
-export default function ApplicationForm({ initialData, readOnly = false }: ApplicationFormProps) {
+export default function ApplicationForm({ initialData, readOnly = false, type }: ApplicationFormProps) {
     const parseBlogCount = (notes: string | null) => {
         if (!notes) return ''
         const match = notes.match(/블로그 리뷰 갯수:\s*(\d+)개/)
         return match ? match[1] : ''
+    }
+
+    const getTitle = (t: string | undefined) => {
+        switch(t) {
+            case 'blog-reporter': return '블로그 기자단 포스팅 신청서'
+            case 'blog-experience': return '블로그 체험단 포스팅 신청서'
+            case 'instagram-popular': return '인스타그램 인기게시물 포스팅 신청서'
+            case 'etc': return '기타사항 포스팅 신청서'
+            default: return '마케팅 신청서'
+        }
+    }
+
+    const getDescription = (t: string | undefined) => {
+        switch(t) {
+            case 'blog-reporter': return '전문 기자가 작성하는 고품질 리뷰를 신청하세요.'
+            case 'blog-experience': return '실제 체험을 바탕으로 한 생생한 후기를 신청하세요.'
+            case 'instagram-popular': return '인스타그램 인기게시물 노출을 통해 홍보 효과를 극대화하세요.'
+            case 'etc': return '기타 마케팅 문의사항을 남겨주세요.'
+            default: return '비전온라인마케팅 신청서입니다.'
+        }
     }
 
     const [storeName, setStoreName] = useState(initialData?.store_name || '')
@@ -133,6 +154,8 @@ export default function ApplicationForm({ initialData, readOnly = false }: Appli
                     tags: contentKeywords.split(',').map(k => sanitizeHtml(k.trim())).filter(k => k),
                     notes: `블로그 리뷰 갯수: ${sanitizeHtml(blogCount.trim())}개\n주의사항 확인 및 동의 완료`,
                     photo_urls: photoUrls,
+                    marketing_type: type?.replace(/-/g, '_') || null,
+                    status: 'pending',
                 })
 
             const { error: insertError } = await Promise.race([
@@ -159,7 +182,10 @@ export default function ApplicationForm({ initialData, readOnly = false }: Appli
     return (
         <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
             <div className="card space-y-6">
-                <h1 className="text-2xl font-bold text-gray-900">마케팅 신청서</h1>
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900">{getTitle(type)}</h1>
+                    <p className="text-gray-500 mt-2">{getDescription(type)}</p>
+                </div>
 
                 {error && (
                     <div className="p-4 bg-red-50 border border-red-200 rounded text-red-700 text-sm">

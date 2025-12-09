@@ -6,7 +6,7 @@ import { createClient } from '@/utils/supabase/client'
 import { Loader2 } from 'lucide-react'
 
 export default function LoginPage() {
-    const [email, setEmail] = useState('')
+    const [username, setUsername] = useState('')
     const [password, setPassword] = useState('')
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -25,16 +25,14 @@ export default function LoginPage() {
     }, [router, supabase])
 
     const getKoreanErrorMessage = (message: string) => {
-        if (message.includes('Invalid login credentials')) return '이메일 또는 비밀번호가 올바르지 않습니다.'
-        if (message.includes('Email not confirmed')) return '이메일 인증이 완료되지 않았습니다.'
-        if (message.includes('User already registered')) return '이미 가입된 이메일입니다.'
+        if (message.includes('Invalid login credentials')) return '아이디 또는 비밀번호가 올바르지 않습니다.'
+        if (message.includes('Email not confirmed')) return '계정 승인이 완료되지 않았습니다.'
+        if (message.includes('User already registered')) return '이미 존재하는 아이디입니다.'
         if (message.includes('Anonymous sign-ins are disabled')) return '익명 로그인이 비활성화되어 있습니다.'
         if (message.includes('Password should be at least 6 characters')) return '비밀번호는 6자 이상이어야 합니다.'
         if (message.includes('Rate limit exceeded')) return '너무 많은 시도가 있었습니다. 잠시 후 다시 시도해주세요.'
         return '오류가 발생했습니다. 다시 시도해주세요.'
     }
-
-    const [isSignUpSuccess, setIsSignUpSuccess] = useState(false)
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -43,7 +41,7 @@ export default function LoginPage() {
 
         try {
             const { error } = await supabase.auth.signInWithPassword({
-                email,
+                email: `${username}@vision.local`,
                 password,
             })
 
@@ -65,45 +63,36 @@ export default function LoginPage() {
         setError(null)
 
         try {
-            const { error } = await supabase.auth.signUp({
-                email,
+            const { data, error } = await supabase.auth.signUp({
+                email: `${username}@vision.local`,
                 password,
                 options: {
                     data: {
                         role: 'client', // Default role
+                        username: username, // Store original username in metadata
                     },
                 },
             })
 
             if (error) throw error
 
-            setIsSignUpSuccess(true)
+            if (data.session) {
+                alert('회원가입이 완료되었습니다.')
+                router.refresh()
+                router.replace('/')
+            } else {
+                // If session is null, it usually means email confirmation is on.
+                // But for ID-based auth with dummy email, we can't confirm.
+                // We assume the admin has disabled email confirmation.
+                // If not, we should probably warn the user.
+                alert('회원가입이 요청되었습니다. 관리자 승인(또는 이메일 설정 해제) 후 로그인해주세요.')
+                setIsLoading(false)
+            }
         } catch (error: unknown) {
             const message = error instanceof Error ? error.message : 'Unknown error'
             setError(getKoreanErrorMessage(message))
-        } finally {
             setIsLoading(false)
         }
-    }
-
-    if (isSignUpSuccess) {
-        return (
-            <div className="flex flex-col items-center justify-center py-12 sm:py-20 animate-slide-up">
-                <div className="w-full max-w-md mx-auto space-y-8 p-8 bg-white rounded-xl shadow-lg border border-gray-200 text-center">
-                    <h2 className="text-2xl font-bold text-gray-900">이메일을 확인해주세요</h2>
-                    <p className="text-gray-600 break-keep">
-                        <strong>{email}</strong> 주소로 인증 메일을 발송했습니다.<br />
-                        메일함에서 인증 링크를 클릭하시면 회원가입이 완료됩니다.
-                    </p>
-                    <button
-                        onClick={() => setIsSignUpSuccess(false)}
-                        className="btn-secondary w-full"
-                    >
-                        로그인 화면으로 돌아가기
-                    </button>
-                </div>
-            </div>
-        )
     }
 
     return (
@@ -120,19 +109,19 @@ export default function LoginPage() {
                 <form className="mt-8 space-y-6" onSubmit={handleLogin}>
                     <div className="space-y-4">
                         <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                                이메일
+                            <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+                                아이디
                             </label>
                             <input
-                                id="email"
-                                name="email"
-                                type="email"
-                                autoComplete="email"
+                                id="username"
+                                name="username"
+                                type="text"
+                                autoComplete="username"
                                 required
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
+                                value={username}
+                                onChange={(e) => setUsername(e.target.value)}
                                 className="input-field"
-                                placeholder="name@example.com"
+                                placeholder="아이디를 입력하세요"
                             />
                         </div>
 

@@ -54,13 +54,48 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
         })
     }, [applications, searchTerm, startDate, endDate])
 
-    // Cost Calculation
-    const totalCost = useMemo(() => {
-        return filteredApplications.reduce((acc, app) => {
-            const count = parseInt(app.notes?.match(/블로그 리뷰 갯수:\s*(\d+)개/)?.[1] || '0', 10)
-            return acc + (count * 10000)
-        }, 0)
+    // Score Calculation
+    const getScore = (type: string | null) => {
+        switch (type) {
+            case 'blog_reporter': return 3
+            case 'blog_experience': return 5
+            case 'instagram_popular': return 5
+            default: return 0
+        }
+    }
+
+    const totalScore = useMemo(() => {
+        const scores = filteredApplications.map(app => getScore(app.marketing_type))
+        if (scores.length === 0) return 0
+        const sum = scores.reduce((a: number, b: number) => a + b, 0)
+        return (sum / scores.length).toFixed(1)
     }, [filteredApplications])
+
+    // Status Toggle
+    const handleStatusToggle = async (app: Application) => {
+        const newStatus = app.status === 'completed' ? 'pending' : 'completed'
+        
+        const { error } = await supabase
+            .from('applications')
+            .update({ status: newStatus })
+            .eq('id', app.id)
+
+        if (error) {
+            console.error('Status update error:', error)
+            alert('상태 변경 중 오류가 발생했습니다.')
+            return
+        }
+
+        if (newStatus === 'completed') {
+            // Kakao Notification Stub
+            console.log(`[Kakao Notification] Sending completion notification to user ${app.user_id} for application ${app.id}`)
+            alert('상태가 완료로 변경되었습니다. (카카오톡 알림 발송 - Stub)')
+        }
+
+        setApplications(prev => prev.map(p => 
+            p.id === app.id ? { ...p, status: newStatus } : p
+        ))
+    }
 
     // Selection handlers
     const handleSelectAll = () => {
@@ -277,7 +312,7 @@ ${app.notes}
                         {selectedIds.length > 0 && ` (${selectedIds.length}개 선택됨)`}
                     </div>
                     <div>
-                        총 예상 비용: <span className="font-bold text-gray-900">{totalCost.toLocaleString()}원</span>
+                        평균 점수: <span className="font-bold text-gray-900">{totalScore}점</span>
                     </div>
                 </div>
             </div>
@@ -312,10 +347,10 @@ ${app.notes}
                                     키워드
                                 </th>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    블로그 수
+                                    점수
                                 </th>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    예상 비용
+                                    상태
                                 </th>
                                 <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     관리
@@ -361,19 +396,29 @@ ${app.notes}
                                             {app.keywords?.join(', ')}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {app.notes?.match(/블로그 리뷰 갯수:\s*(\d+)개/)?.[1] || '-'}개
+                                            <span className="font-semibold text-gray-900">{getScore(app.marketing_type)}점</span>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {(() => {
-                                                const count = parseInt(app.notes?.match(/블로그 리뷰 갯수:\s*(\d+)개/)?.[1] || '0', 10)
-                                                const cost = count * 10000
-                                                return (
-                                                    <div className="flex flex-col">
-                                                        <span className="font-semibold text-gray-900">{cost.toLocaleString()}원</span>
-                                                        <span className="text-xs text-gray-400">(예시 단가: 10,000원)</span>
-                                                    </div>
-                                                )
-                                            })()}
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                            {isAdmin ? (
+                                                <button
+                                                    onClick={() => handleStatusToggle(app)}
+                                                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                                                        app.status === 'completed'
+                                                            ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                                                            : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                                                    }`}
+                                                >
+                                                    {app.status === 'completed' ? '완료' : '미완료'}
+                                                </button>
+                                            ) : (
+                                                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                                    app.status === 'completed'
+                                                        ? 'bg-green-100 text-green-800'
+                                                        : 'bg-yellow-100 text-yellow-800'
+                                                }`}>
+                                                    {app.status === 'completed' ? '완료' : '미완료'}
+                                                </span>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <div className="flex items-center justify-end gap-2">
