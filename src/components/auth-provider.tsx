@@ -57,6 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 ? {
                     id: session.user.id,
                     email: session.user.email ?? null,
+                    username: session.user.user_metadata?.username ?? session.user.email?.split('@')[0] ?? null,
                     role: metadataRole ?? 'client',
                     created_at: new Date().toISOString(),
                 }

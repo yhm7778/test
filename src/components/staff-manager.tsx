@@ -10,7 +10,7 @@ type Profile = Database['public']['Tables']['profiles']['Row']
 export default function StaffManager() {
     const [staffMembers, setStaffMembers] = useState<Profile[]>([])
     const [isCreating, setIsCreating] = useState(false)
-    const [createForm, setCreateForm] = useState({ email: '', password: '', name: '' })
+    const [createForm, setCreateForm] = useState({ username: '', password: '', name: '' })
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [createStatus, setCreateStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
@@ -40,12 +40,13 @@ export default function StaffManager() {
     }, [loadStaffMembers])
 
     const handleCreateStaff = async () => {
-        const email = createForm.email.trim().toLowerCase()
+        const username = createForm.username.trim()
+        const email = `${username}@vision.local`
         const password = createForm.password.trim()
         const name = createForm.name.trim()
 
-        if (!email || !password) {
-            setCreateStatus({ type: 'error', message: '이메일과 비밀번호를 입력해주세요.' })
+        if (!username || !password) {
+            setCreateStatus({ type: 'error', message: '아이디와 비밀번호를 입력해주세요.' })
             return
         }
 
@@ -64,7 +65,7 @@ export default function StaffManager() {
             }
 
             setCreateStatus({ type: 'success', message: '직원 계정이 생성되었습니다.' })
-            setCreateForm({ email: '', password: '', name: '' })
+            setCreateForm({ username: '', password: '', name: '' })
             await loadStaffMembers()
         } catch (error: unknown) {
             const message = error instanceof Error ? error.message : '계정 생성 중 오류가 발생했습니다.'
@@ -117,12 +118,12 @@ export default function StaffManager() {
                 {isCreating && (
                     <div className="mt-6 space-y-4 p-6 bg-gray-50 rounded-xl border border-gray-200">
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">이메일</label>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">아이디</label>
                             <input
-                                type="email"
-                                value={createForm.email}
-                                onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
-                                placeholder="staff@example.com"
+                                type="text"
+                                value={createForm.username}
+                                onChange={(e) => setCreateForm({ ...createForm, username: e.target.value })}
+                                placeholder="아이디 입력 (예: staff1)"
                                 className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm hover:border-gray-400"
                             />
                         </div>
@@ -182,7 +183,7 @@ export default function StaffManager() {
                             <thead className="bg-gray-50">
                                 <tr>
                                     <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
-                                        이메일
+                                        아이디
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">
                                         역할
@@ -222,7 +223,7 @@ export default function StaffManager() {
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                                 <div className="flex items-center gap-2">
                                                     <UserCheck className="h-4 w-4 text-gray-400" />
-                                                    {staff.email}
+                                                    {staff.username || staff.email}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">

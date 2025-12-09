@@ -56,6 +56,7 @@ async function findAdminUserByEmail(adminAuth: AdminApiWithEmail, email: string)
 }
 
 async function syncStaffProfile(supabaseAdmin: SupabaseAdminClient, userId: string, email: string) {
+    const username = email.split('@')[0]
     const profileResult = await supabaseAdmin
         .from('profiles')
         .select('id')
@@ -70,6 +71,7 @@ async function syncStaffProfile(supabaseAdmin: SupabaseAdminClient, userId: stri
         const updatePayload: ProfileUpdate = {
             role: 'staff',
             email,
+            username,
         }
 
         const { error } = await supabaseAdmin
@@ -88,6 +90,7 @@ async function syncStaffProfile(supabaseAdmin: SupabaseAdminClient, userId: stri
         id: userId,
         email,
         role: 'staff',
+        username,
     }
 
     const { error } = await supabaseAdmin.from('profiles').insert(insertPayload)

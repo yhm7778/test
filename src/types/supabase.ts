@@ -13,18 +13,21 @@ export interface Database {
         Row: {
           id: string
           email: string | null
+          username: string | null
           role: 'admin' | 'staff' | 'client'
           created_at: string
         }
         Insert: {
           id: string
           email?: string | null
+          username?: string | null
           role?: 'admin' | 'staff' | 'client'
           created_at?: string
         }
         Update: {
           id?: string
           email?: string | null
+          username?: string | null
           role?: 'admin' | 'staff' | 'client'
           created_at?: string
         }
