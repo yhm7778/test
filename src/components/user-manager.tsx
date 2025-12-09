@@ -15,7 +15,6 @@ export default function UserManager() {
     const [searchTerm, setSearchTerm] = useState('')
     const [updatingId, setUpdatingId] = useState<string | null>(null)
     const [limitValues, setLimitValues] = useState<{[key: string]: string}>({})
-    const [showInternal, setShowInternal] = useState(false)
     const [warning, setWarning] = useState<string | null>(null)
 
     // Remove client-side supabase instance
@@ -92,10 +91,8 @@ export default function UserManager() {
     }
 
     const filteredProfiles = profiles.filter(p => 
-        (showInternal || !p.email?.includes('@vision.local')) && (
-            (p.email?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-            (p.username?.toLowerCase() || '').includes(searchTerm.toLowerCase())
-        )
+        (p.email?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (p.username?.toLowerCase() || '').includes(searchTerm.toLowerCase())
     )
 
     return (
@@ -127,25 +124,14 @@ export default function UserManager() {
                         className="input-field pl-9 py-2 text-sm w-full"
                     />
                 </div>
-                <div className="flex items-center gap-2">
-                    <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-                        <input 
-                            type="checkbox" 
-                            checked={showInternal} 
-                            onChange={(e) => setShowInternal(e.target.checked)}
-                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        내부 계정 보기
-                    </label>
-                    <button 
-                        onClick={fetchProfiles} 
-                        className="btn-secondary py-2 px-3 text-sm flex items-center gap-2"
-                        disabled={isLoading}
-                    >
-                        <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                        새로고침
-                    </button>
-                </div>
+                <button 
+                    onClick={fetchProfiles} 
+                    className="btn-secondary py-2 px-3 text-sm flex items-center gap-2"
+                    disabled={isLoading}
+                >
+                    <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                    새로고침
+                </button>
             </div>
 
             <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
@@ -197,7 +183,7 @@ export default function UserManager() {
                                                         {profile.username || '이름 없음'}
                                                     </div>
                                                     <div className="text-sm text-gray-500">
-                                                        {profile.email}
+                                                        {profile.email?.includes('@vision.local') ? '소셜 로그인 (이메일 없음)' : profile.email}
                                                     </div>
                                                 </div>
                                             </div>
