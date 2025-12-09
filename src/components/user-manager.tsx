@@ -1,14 +1,13 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { createClient } from '@/utils/supabase/client'
 import { Database } from '@/types/supabase'
 import { format, parseISO } from 'date-fns'
 import { Loader2, Save, Search, User, RefreshCw } from 'lucide-react'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 
-import { updateUserLimit } from '@/app/actions/admin'
+import { updateUserLimit, getClients } from '@/app/actions/admin'
 
 export default function UserManager() {
     const [profiles, setProfiles] = useState<Profile[]>([])
@@ -17,20 +16,20 @@ export default function UserManager() {
     const [updatingId, setUpdatingId] = useState<string | null>(null)
     const [limitValues, setLimitValues] = useState<{[key: string]: string}>({})
 
-    const supabase = createClient()
+    // Remove client-side supabase instance
+    // const supabase = createClient()
 
     const fetchProfiles = useCallback(async () => {
         setIsLoading(true)
         try {
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .order('created_at', { ascending: false })
+            // Use Server Action instead of client-side fetch
+            const { data, error } = await getClients()
             
-            if (error) throw error
+            if (error) throw new Error(error)
 
             if (data) {
-                const profilesData = data as Profile[]
+                // Type assertion for data from Server Action
+                const profilesData = data as unknown as Profile[]
                 setProfiles(profilesData)
                 // Initialize input values
                 const initialValues: {[key: string]: string} = {}
@@ -45,7 +44,7 @@ export default function UserManager() {
         } finally {
             setIsLoading(false)
         }
-    }, [supabase])
+    }, [])
 
     useEffect(() => {
         fetchProfiles()

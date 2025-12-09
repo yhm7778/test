@@ -21,8 +21,23 @@ export async function getClients() {
         return { error: 'Unauthorized' }
     }
 
+    // Use Service Role if available to bypass RLS, otherwise use authenticated client
+    let adminSupabase: SupabaseClient<Database> | Awaited<ReturnType<typeof createClient>> = supabase
+    if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        adminSupabase = createSupabaseClient<Database>(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY,
+            {
+                auth: {
+                    autoRefreshToken: false,
+                    persistSession: false
+                }
+            }
+        )
+    }
+
     // Fetch clients
-    const { data: clients, error } = await supabase
+    const { data: clients, error } = await adminSupabase
         .from('profiles')
         .select('*')
         .order('created_at', { ascending: false })
