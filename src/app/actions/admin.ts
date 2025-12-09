@@ -1,10 +1,8 @@
 'use server'
 
 import { createClient } from '@/utils/supabase/server'
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { createClient as createSupabaseClient, SupabaseClient } from '@supabase/supabase-js'
 import { Database } from '@/types/supabase'
-
-type ProfileRow = Database['public']['Tables']['profiles']['Row']
 
 export async function getClients() {
     const supabase = await createClient()
@@ -52,9 +50,9 @@ export async function updateUserLimit(userId: string, limit: number) {
     }
 
     // Use Service Role if available to bypass RLS, otherwise use authenticated client
-    let adminSupabase = supabase
+    let adminSupabase: SupabaseClient<Database> | Awaited<ReturnType<typeof createClient>> = supabase
     if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
-        adminSupabase = createSupabaseClient(
+        adminSupabase = createSupabaseClient<Database>(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
             process.env.SUPABASE_SERVICE_ROLE_KEY,
             {
@@ -63,7 +61,7 @@ export async function updateUserLimit(userId: string, limit: number) {
                     persistSession: false
                 }
             }
-        ) as any // Type casting to avoid mismatch if types differ slightly
+        )
     }
 
     const { error } = await adminSupabase

@@ -15,7 +15,8 @@ export default function AdminApplicationCreator() {
         const fetchUsers = async () => {
             const { data, error } = await getClients()
             if (data) {
-                setUsers(data)
+                // 타입 단언을 통해 Supabase 반환 타입을 컴포넌트 상태 타입과 일치시킵니다.
+                setUsers(data as unknown as { id: string, username: string | null, email: string | null, role: string }[])
             } else {
                 console.error(error)
             }
