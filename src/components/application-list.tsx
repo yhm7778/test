@@ -340,7 +340,7 @@ ${app.notes}
             <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm space-y-4">
                 <div className="flex flex-col xl:flex-row gap-4 justify-between items-start xl:items-end">
                     {/* Filters */}
-                    <div className="flex flex-col sm:flex-row gap-4 w-full xl:w-auto">
+                    <div className="flex flex-col lg:flex-row gap-4 w-full xl:w-auto">
                         <div className="space-y-1">
                             <label className="text-xs font-medium text-gray-500">기간 검색</label>
                             <div className="flex items-center gap-2">
@@ -348,14 +348,14 @@ ${app.notes}
                                     type="date" 
                                     value={startDate} 
                                     onChange={(e) => setStartDate(e.target.value)}
-                                    className="input-field py-1.5 text-sm w-36"
+                                    className="input-field py-1.5 text-sm w-full sm:w-36"
                                 />
                                 <span className="text-gray-400">~</span>
                                 <input 
                                     type="date" 
                                     value={endDate} 
                                     onChange={(e) => setEndDate(e.target.value)}
-                                    className="input-field py-1.5 text-sm w-36"
+                                    className="input-field py-1.5 text-sm w-full sm:w-36"
                                 />
                             </div>
                         </div>
@@ -368,7 +368,7 @@ ${app.notes}
                                     placeholder="상호명, 키워드, ID 검색"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="input-field pl-9 py-1.5 text-sm w-full sm:w-64"
+                                    className="input-field pl-9 py-1.5 text-sm w-full"
                                 />
                             </div>
                         </div>
