@@ -27,8 +27,9 @@ export async function checkRank(keyword: string, placeName: string) {
         const $ = cheerio.load(html)
 
         let realRank = 0
-        let found = false
-        let foundRank = -1
+        let foundOrganic = false
+        let foundAd = false
+        let organicRank = -1
         let foundName = ''
         const searchName = placeName.replace(/\s+/g, '').toLowerCase()
 
@@ -36,8 +37,7 @@ export async function checkRank(keyword: string, placeName: string) {
         $('li').each((i, el) => {
             const element = $(el)
             const htmlContent = element.html() || ''
-            const textContent = element.text()
-
+            
             // Check if it's a place item
             if (htmlContent.includes('place.map.naver.com') || htmlContent.includes('/place/')) {
                 // Extract ID
@@ -52,22 +52,27 @@ export async function checkRank(keyword: string, placeName: string) {
 
                 if (id) {
                     // Check if it's an Ad
-                    const isAd = textContent.includes('광고') || textContent.includes('플레이스 플러스')
+                    // Look for specific Ad classes or badges
+                    const adBadge = element.find('.ico_ad, .txt_ad, .sp_ad, .ad_area')
+                    const isAd = adBadge.length > 0 || element.find('span').filter((_, e) => $(e).text() === '광고').length > 0
                     
                     // Extract Name
-                    // Try multiple selectors to find the name
-                    // .place_bluelink is common for the main title link
-                    // Sometimes it might be in other spans depending on the layout (list vs map view style)
-                    let name = element.find('.place_bluelink').text() || 
-                               element.find('span.Fc1rA').text() || 
-                               element.find('span.YwYLL').text()
+                    // Try to find the specific name class first (TYaxT seems common)
+                    let name = element.find('.TYaxT').text()
                     
-                    // Fallback: try to find the first strong tag or just use text if we are desperate, 
-                    // but let's be careful not to grab random text.
                     if (!name) {
-                         // Sometimes the structure is different. Let's look for the link text.
-                         name = element.find('a').first().text()
+                        // Fallback: Use .place_bluelink but remove children that are usually non-name info
+                        const blueLink = element.find('.place_bluelink').clone()
+                        blueLink.find('.place_blind, .urQl1, .KCMnt, .Yi59N').remove()
+                        name = blueLink.text()
                     }
+                    
+                    if (!name) {
+                        // Final fallback
+                        name = element.find('a').first().text()
+                    }
+
+                    name = name.trim()
 
                     // Clean up name for comparison
                     const currentNameClean = name.replace(/\s+/g, '').toLowerCase()
@@ -76,38 +81,49 @@ export async function checkRank(keyword: string, placeName: string) {
                         realRank++
                     }
 
-                    // Check if this is the place we are looking for
-                    // We check if the search term is included in the place name or vice versa
-                    // to handle slight mismatches (e.g. "마케팅 식당" vs "마케팅식당 본점")
-                    if (!found && (currentNameClean.includes(searchName) || searchName.includes(currentNameClean))) {
-                        found = true
+                    if (currentNameClean.includes(searchName) || searchName.includes(currentNameClean)) {
                         foundName = name
-                        if (!isAd) {
-                            foundRank = realRank
+                        if (isAd) {
+                            foundAd = true
+                        } else {
+                            if (!foundOrganic) {
+                                foundOrganic = true
+                                organicRank = realRank
+                            }
                         }
                     }
                 }
             }
         })
 
-        if (found) {
-            if (foundRank !== -1) {
-                return { 
-                    success: true, 
-                    rank: foundRank, 
-                    message: `현재 "${keyword}" 검색 결과에서 "${foundName}"은(는) ${foundRank}위 입니다.` 
-                }
-            } else {
-                return { 
-                    success: true, 
-                    rank: -1, 
-                    message: `"${foundName}"은(는) 발견되었으나 "광고" 영역에 노출되고 있어 순위에서 제외되었습니다.` 
-                }
+        if (foundOrganic) {
+            return { 
+                success: true, 
+                rank: organicRank, 
+                message: `현재 "${keyword}" 검색 결과(통합검색)에서 "${foundName}"은(는) ${organicRank}위 입니다.` 
+            }
+        }
+
+        // If not found in organic results (or only found as Ad), try deep search via Map API
+        const deepResult = await searchDeepRank(keyword, placeName);
+        if (deepResult) {
+            return {
+                success: true,
+                rank: deepResult.rank,
+                message: `통합검색 상위에는 없지만, 지도 순위 ${deepResult.page}페이지 ${deepResult.rank}위에서 "${deepResult.name}"을(를) 찾았습니다.${foundAd ? ' (통합검색에서는 광고로 노출 중)' : ''}`
+            }
+        }
+
+        if (foundAd) {
+            return { 
+                success: true, 
+                rank: -1, 
+                message: `"${foundName}"은(는) 발견되었으나 "광고" 영역에만 노출되고 있어 실제 순위를 파악할 수 없습니다.` 
             }
         } else {
             return { 
                 success: false, 
-                message: `검색 결과 상위(통합검색 플레이스 영역)에서 "${placeName}"을(를) 찾을 수 없습니다.` 
+                message: `검색 결과 상위 및 지도 5페이지(100위) 내에서 "${placeName}"을(를) 찾을 수 없습니다.` 
             }
         }
 
@@ -115,4 +131,54 @@ export async function checkRank(keyword: string, placeName: string) {
         console.error('Rank check error:', error)
         return { error: '순위 조회 중 오류가 발생했습니다.' }
     }
+}
+
+async function searchDeepRank(keyword: string, placeName: string) {
+    const encodedKeyword = encodeURIComponent(keyword);
+    const searchName = placeName.replace(/\s+/g, '').toLowerCase();
+    
+    // Search up to 5 pages (100 items)
+    for (let page = 1; page <= 5; page++) {
+        try {
+            // Using Naver Map internal API structure
+            const url = `https://map.naver.com/p/api/search/allSearch?query=${encodedKeyword}&type=all&page=${page}&displayCount=20`;
+            const response = await fetch(url, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Referer': 'https://map.naver.com/',
+                    'Accept': 'application/json, text/plain, */*'
+                },
+                cache: 'no-store'
+            });
+
+            if (!response.ok) continue;
+
+            const data = await response.json();
+            const list = data?.result?.place?.list;
+
+            if (!list || !Array.isArray(list)) continue;
+
+            for (let i = 0; i < list.length; i++) {
+                const item = list[i];
+                const itemName = item.name || '';
+                const cleanItemName = itemName.replace(/\s+/g, '').toLowerCase();
+                
+                // Check if this item matches
+                if (cleanItemName.includes(searchName) || searchName.includes(cleanItemName)) {
+                     // Calculate global rank based on page
+                     // Assuming 20 items per page
+                     const rank = (page - 1) * 20 + (i + 1);
+                     return {
+                         rank,
+                         name: itemName,
+                         page
+                     };
+                }
+            }
+            
+        } catch (e) {
+            console.error(`Map deep search error page ${page}:`, e);
+        }
+    }
+    return null;
 }
