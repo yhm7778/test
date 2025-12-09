@@ -123,7 +123,7 @@ export async function checkRank(keyword: string, placeName: string) {
         } else {
             return { 
                 success: false, 
-                message: `검색 결과 상위 및 지도 5페이지(100위) 내에서 "${placeName}"을(를) 찾을 수 없습니다.` 
+                message: `검색 결과 전체(최대 100페이지)에서 "${placeName}"을(를) 찾을 수 없습니다.` 
             }
         }
 
@@ -137,8 +137,10 @@ async function searchDeepRank(keyword: string, placeName: string) {
     const encodedKeyword = encodeURIComponent(keyword);
     const searchName = placeName.replace(/\s+/g, '').toLowerCase();
     
-    // Search up to 5 pages (100 items)
-    for (let page = 1; page <= 5; page++) {
+    // Search up to 100 pages (2000 items)
+    const MAX_PAGES = 100;
+    
+    for (let page = 1; page <= MAX_PAGES; page++) {
         try {
             // Using Naver Map internal API structure
             const url = `https://map.naver.com/p/api/search/allSearch?query=${encodedKeyword}&type=all&page=${page}&displayCount=20`;
@@ -156,7 +158,10 @@ async function searchDeepRank(keyword: string, placeName: string) {
             const data = await response.json();
             const list = data?.result?.place?.list;
 
-            if (!list || !Array.isArray(list)) continue;
+            // If list is empty or not an array, we've reached the end of results
+            if (!list || !Array.isArray(list) || list.length === 0) {
+                break;
+            }
 
             for (let i = 0; i < list.length; i++) {
                 const item = list[i];
