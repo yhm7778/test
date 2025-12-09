@@ -5,8 +5,9 @@ import { Database } from '@/types/supabase'
 import ApplicationList from './application-list'
 import MenuManager from './menu-manager'
 import StaffManager from './staff-manager'
+import UserManager from './user-manager'
 import AdminApplicationCreator from './admin-application-creator'
-import { FileText, Menu, Users, PenTool } from 'lucide-react'
+import { FileText, Menu, Users, PenTool, UserCog } from 'lucide-react'
 
 type Application = Database['public']['Tables']['applications']['Row']
 
@@ -16,12 +17,13 @@ interface AdminTabsProps {
 }
 
 export default function AdminTabs({ initialApplications, isAdmin }: AdminTabsProps) {
-    const [activeTab, setActiveTab] = useState<'applications' | 'menu' | 'staff' | 'create'>('applications')
+    const [activeTab, setActiveTab] = useState<'applications' | 'menu' | 'staff' | 'create' | 'users'>('applications')
 
     const tabs = [
         { id: 'applications' as const, label: '신청 내역', icon: FileText },
         { id: 'create' as const, label: '신청서 작성', icon: PenTool },
         ...(isAdmin ? [
+            { id: 'users' as const, label: '회원 관리', icon: UserCog },
             { id: 'menu' as const, label: '메뉴 관리', icon: Menu },
             { id: 'staff' as const, label: '직원 관리', icon: Users },
         ] : []),
@@ -70,6 +72,9 @@ export default function AdminTabs({ initialApplications, isAdmin }: AdminTabsPro
                 )}
                 {activeTab === 'create' && (
                     <AdminApplicationCreator />
+                )}
+                {isAdmin && activeTab === 'users' && (
+                    <UserManager />
                 )}
                 {isAdmin && activeTab === 'menu' && (
                     <MenuManager />

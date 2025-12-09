@@ -550,7 +550,11 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
                             </button>
                         </div>
                         <div className="p-6">
-                            <ApplicationForm initialData={viewingApp} readOnly={true} />
+                            <ApplicationForm 
+                                type={viewingApp.marketing_type?.replace(/_/g, '-')} 
+                                initialData={viewingApp} 
+                                readOnly={true} 
+                            />
                         </div>
                     </div>
                 </div>

@@ -3,15 +3,19 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from './auth-provider'
 import { Loader2, Clock, LogOut, RefreshCcw } from 'lucide-react'
-import { useRouter } from 'next/navigation'
 
 export default function AccountRecoveryModal() {
     const { profile, signOut } = useAuth()
     const [isLoading, setIsLoading] = useState(false)
-    const router = useRouter()
+    const [isMounted, setIsMounted] = useState(false)
     
+    useEffect(() => {
+        setIsMounted(true)
+    }, [])
+
     // Don't render anything if no profile or no scheduled deletion
-    if (!profile?.scheduled_deletion_at) {
+    // Also wait for client-side mount to avoid hydration mismatch (Date usage)
+    if (!isMounted || !profile?.scheduled_deletion_at) {
         return null
     }
 

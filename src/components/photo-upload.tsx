@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 'use client'
 
-import { useState, useCallback, ChangeEvent, useEffect } from 'react'
+import { useState, useCallback, ChangeEvent } from 'react'
 import { Upload, X, ImageOff, RefreshCw, Play, FileVideo } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 

@@ -23,6 +23,47 @@ function extractObjectPath(url: string): string | null {
     }
 }
 
+// Simple concurrency limiter
+const pLimit = (concurrency: number) => {
+    const queue: (() => Promise<void>)[] = []
+    let activeCount = 0
+
+    const next = () => {
+        activeCount--
+        if (queue.length > 0) {
+            const task = queue.shift()
+            if (task) {
+                activeCount++
+                task()
+            }
+        }
+    }
+
+    const run = async <T,>(fn: () => Promise<T>): Promise<T> => {
+        return new Promise<T>((resolve, reject) => {
+            const task = async () => {
+                try {
+                    const result = await fn()
+                    resolve(result)
+                } catch (err) {
+                    reject(err)
+                } finally {
+                    next()
+                }
+            }
+
+            if (activeCount < concurrency) {
+                activeCount++
+                task()
+            } else {
+                queue.push(task)
+            }
+        })
+    }
+
+    return run
+}
+
 export async function generateZip(applications: Application[]) {
     const zip = new JSZip()
 
@@ -35,42 +76,37 @@ export async function generateZip(applications: Application[]) {
         )
         : null
 
-    // Parallel processing with concurrency limit
-    const BATCH_SIZE = 5
-    const chunks = []
-    for (let i = 0; i < applications.length; i += BATCH_SIZE) {
-        chunks.push(applications.slice(i, i + BATCH_SIZE))
-    }
+    const limit = pLimit(30) // Increased concurrency to 30
+    const tasks: Promise<void>[] = []
 
-    for (const chunk of chunks) {
-        await Promise.all(chunk.map(async (app) => {
-            if (!app.photo_urls || app.photo_urls.length === 0) return
+    for (const app of applications) {
+        if (!app.photo_urls || app.photo_urls.length === 0) continue
 
-            // Parse blog count for photo distribution
-            const blogCountMatch = app.notes?.match(/블로그 리뷰 갯수:\s*(\d+)개/)
-            const blogCount = blogCountMatch ? parseInt(blogCountMatch[1], 10) : 1
+        // Parse blog count for photo distribution
+        const blogCountMatch = app.notes?.match(/블로그 리뷰 갯수:\s*(\d+)개/)
+        const blogCount = blogCountMatch ? parseInt(blogCountMatch[1], 10) : 1
 
-            const getSolutionName = (type: string | null) => {
-                switch(type) {
-                    case 'blog-reporter': return '기자단'
-                    case 'blog-experience': return '체험단'
-                    case 'instagram-popular': return '인스타그램'
-                    case 'seo-optimization': return 'SEO'
-                    case 'photo-shooting': return '촬영'
-                    default: return '마케팅'
-                }
+        const getSolutionName = (type: string | null) => {
+            switch(type) {
+                case 'blog-reporter': return '기자단'
+                case 'blog-experience': return '체험단'
+                case 'instagram-popular': return '인스타그램'
+                case 'seo-optimization': return 'SEO'
+                case 'photo-shooting': return '촬영'
+                default: return '마케팅'
             }
-            const solutionName = getSolutionName(app.marketing_type)
-            const dateStr = new Date(app.created_at).toISOString().split('T')[0] // YYYY-MM-DD
-            
-            // Format: (솔루션,상호명,날짜,갯수) -> Using underscores for safety
-            const folderName = `${solutionName}_${app.store_name}_${dateStr}_${blogCount}개`.replace(/[\/\\:*?"<>|]/g, '_')
-            
-            const folder = zip.folder(folderName)
-            if (!folder) return
+        }
+        const solutionName = getSolutionName(app.marketing_type)
+        const dateStr = new Date(app.created_at).toISOString().split('T')[0] // YYYY-MM-DD
+        
+        // Format: (솔루션,상호명,날짜,갯수) -> Using underscores for safety
+        const folderName = `${solutionName}_${app.store_name}_${dateStr}_${blogCount}개`.replace(/[\/\\:*?"<>|]/g, '_')
+        
+        const folder = zip.folder(folderName)
+        if (!folder) continue
 
-            // Add text info
-            const infoContent = `
+        // Add text info
+        const infoContent = `
 [신청서 정보]
 상호명: ${app.store_name}
 
@@ -83,11 +119,11 @@ export async function generateZip(applications: Application[]) {
 ${app.advantages}
 `.trim()
 
-            folder.file('info.txt', infoContent)
+        folder.file('info.txt', infoContent)
 
-            // Add photos / videos
-            const photos = app.photo_urls
-            await Promise.all(photos.map(async (url, i) => {
+        // Add photos / videos
+        app.photo_urls.forEach((url, i) => {
+            tasks.push(limit(async () => {
                 try {
                     let downloadUrl = url
 
@@ -120,8 +156,10 @@ ${app.advantages}
                     folder.file(`error_photo_${i + 1}.txt`, 'Download failed')
                 }
             }))
-        }))
+        })
     }
+
+    await Promise.all(tasks)
 
     return await zip.generateAsync({ type: 'blob' })
 }
