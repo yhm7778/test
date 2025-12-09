@@ -376,45 +376,52 @@ ${app.notes}
 
                     {/* Action Buttons */}
                     {isAdmin && (
-                    <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
-                        <button
-                            onClick={() => handleBulkStatusUpdate('completed')}
-                            disabled={selectedIds.length === 0}
-                            className="btn-primary py-2 px-3 text-sm flex items-center gap-2 disabled:opacity-50 bg-green-600 hover:bg-green-700 border-green-600 text-white"
-                        >
-                            <CheckSquare className="h-4 w-4" />
-                            선택 완료
-                        </button>
-                        <button
-                            onClick={() => handleBulkStatusUpdate('pending')}
-                            disabled={selectedIds.length === 0}
-                            className="btn-secondary py-2 px-3 text-sm flex items-center gap-2 disabled:opacity-50 bg-yellow-600 hover:bg-yellow-700 border-yellow-600 text-white"
-                        >
-                            <X className="h-4 w-4" />
-                            선택 미완료
-                        </button>
-                        <div className="w-px h-6 bg-gray-300 mx-1 hidden sm:block"></div>
-                        <button
-                            onClick={refreshData}
-                            disabled={isRefreshing}
-                            className="btn-secondary py-2 px-3 text-sm flex items-center gap-2 disabled:opacity-50"
-                            title="데이터 새로고침"
-                        >
-                            <Loader2 className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                            {isRefreshing ? '갱신 중...' : '새로고침'}
-                        </button>
-                        <button
-                            onClick={() => handleDelete(selectedIds)}
-                            disabled={selectedIds.length === 0 || isDeleting}
-                            className="btn-danger py-2 px-3 text-sm flex items-center gap-2 disabled:opacity-50 bg-red-600 hover:bg-red-700 text-white"
-                        >
-                            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                            선택 삭제
-                        </button>
+                    <div className="flex flex-col sm:flex-row flex-wrap items-end sm:items-center gap-2 w-full md:w-auto justify-end mt-4 md:mt-0">
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => handleBulkStatusUpdate('completed')}
+                                disabled={selectedIds.length === 0}
+                                className="btn-primary py-2 px-3 text-sm flex items-center gap-2 disabled:opacity-50 bg-green-600 hover:bg-green-700 border-green-600 text-white whitespace-nowrap"
+                            >
+                                <CheckSquare className="h-4 w-4" />
+                                선택 완료
+                            </button>
+                            <button
+                                onClick={() => handleBulkStatusUpdate('pending')}
+                                disabled={selectedIds.length === 0}
+                                className="btn-secondary py-2 px-3 text-sm flex items-center gap-2 disabled:opacity-50 bg-yellow-600 hover:bg-yellow-700 border-yellow-600 text-white whitespace-nowrap"
+                            >
+                                <X className="h-4 w-4" />
+                                선택 미완료
+                            </button>
+                        </div>
+                        
+                        <div className="hidden sm:block w-px h-6 bg-gray-300 mx-1"></div>
+                        
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={refreshData}
+                                disabled={isRefreshing}
+                                className="btn-secondary py-2 px-3 text-sm flex items-center gap-2 disabled:opacity-50 whitespace-nowrap"
+                                title="데이터 새로고침"
+                            >
+                                <Loader2 className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                                {isRefreshing ? '갱신 중...' : '새로고침'}
+                            </button>
+                            <button
+                                onClick={() => handleDelete(selectedIds)}
+                                disabled={selectedIds.length === 0 || isDeleting}
+                                className="btn-danger py-2 px-3 text-sm flex items-center gap-2 disabled:opacity-50 bg-red-600 hover:bg-red-700 text-white whitespace-nowrap"
+                            >
+                                {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                선택 삭제
+                            </button>
+                        </div>
+
                         <button
                             onClick={handleDownloadZip}
                             disabled={!filteredApplications.length || isDownloading}
-                            className="btn-primary py-2 px-3 text-sm flex items-center gap-2 disabled:opacity-50 bg-blue-600 hover:bg-blue-700 border-blue-600 text-white"
+                            className="btn-primary py-2 px-3 text-sm flex items-center gap-2 disabled:opacity-50 bg-blue-600 hover:bg-blue-700 border-blue-600 text-white whitespace-nowrap w-full sm:w-auto justify-center"
                         >
                             {isDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                             {selectedIds.length > 0 ? `${selectedIds.length}개 다운로드` : '전체 다운로드'}
