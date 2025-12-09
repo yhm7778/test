@@ -8,6 +8,8 @@ import { Loader2, Save, Search, User, RefreshCw } from 'lucide-react'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 
+import { updateUserLimit } from '@/app/actions/admin'
+
 export default function UserManager() {
     const [profiles, setProfiles] = useState<Profile[]>([])
     const [isLoading, setIsLoading] = useState(true)
@@ -65,12 +67,9 @@ export default function UserManager() {
 
         setUpdatingId(profile.id)
         try {
-            const { error } = await supabase
-                .from('profiles')
-                .update({ max_requests: newValue })
-                .eq('id', profile.id)
+            const result = await updateUserLimit(profile.id, newValue)
 
-            if (error) throw error
+            if (result.error) throw new Error(result.error)
 
             // Update local state
             setProfiles(prev => prev.map(p => 
@@ -86,8 +85,10 @@ export default function UserManager() {
     }
 
     const filteredProfiles = profiles.filter(p => 
-        (p.email?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-        (p.username?.toLowerCase() || '').includes(searchTerm.toLowerCase())
+        !p.email?.includes('@vision.local') && (
+            (p.email?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+            (p.username?.toLowerCase() || '').includes(searchTerm.toLowerCase())
+        )
     )
 
     return (
