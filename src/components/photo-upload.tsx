@@ -1,8 +1,8 @@
 /* eslint-disable @next/next/no-img-element */
 'use client'
 
-import { useState, useCallback, ChangeEvent } from 'react'
-import { Upload, X, ImageOff, RefreshCw } from 'lucide-react'
+import { useState, useCallback, ChangeEvent, useEffect } from 'react'
+import { Upload, X, ImageOff, RefreshCw, Play, FileVideo } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 
 interface PhotoUploadProps {
@@ -29,13 +29,20 @@ const SupabaseMedia = ({
     const [currentUrl, setCurrentUrl] = useState(url)
     const [isRetrying, setIsRetrying] = useState(false)
     const [isDead, setIsDead] = useState(false)
+    const [mediaType, setMediaType] = useState<'image' | 'video' | 'unknown'>('unknown')
     const supabase = createClient()
     
     const isVideo = (path: string) => {
-        // Check for common video extensions
-        // Also check if path contains video indicators if extension is masked (though less likely with Supabase public URLs)
         return path.match(/\.(mp4|webm|ogg|mov|qt|avi|wmv|flv|m4v)(\?|$)/i)
     }
+
+    useEffect(() => {
+        if (isVideo(url)) {
+            setMediaType('video')
+        } else {
+            setMediaType('image')
+        }
+    }, [url])
 
     const handleError = async () => {
         if (isRetrying || isDead || currentUrl !== url) return 
@@ -49,7 +56,7 @@ const SupabaseMedia = ({
             
             if (match && match[1]) {
                 const path = decodeURIComponent(match[1])
-                console.log(`Attempting to recover image: ${path}`)
+                console.log(`Attempting to recover media: ${path}`)
                 
                 const { data, error: signedError } = await supabase
                     .storage
@@ -68,7 +75,7 @@ const SupabaseMedia = ({
                 console.warn('URL does not match expected Supabase pattern:', url)
             }
         } catch (e) {
-            console.error("Failed to recover image:", e)
+            console.error("Failed to recover media:", e)
         }
 
         // If we reach here, recovery failed
@@ -79,23 +86,34 @@ const SupabaseMedia = ({
     if (isDead) {
         return (
             <div className={`flex flex-col items-center justify-center bg-gray-100 text-gray-400 ${className}`}>
-                <ImageOff className="h-8 w-8 mb-2" />
+                {mediaType === 'video' ? <FileVideo className="h-8 w-8 mb-2" /> : <ImageOff className="h-8 w-8 mb-2" />}
                 <span className="text-xs text-center px-2 break-all">
-                    이미지를 불러올 수 없습니다
+                    {mediaType === 'video' ? '동영상을 재생할 수 없습니다' : '이미지를 불러올 수 없습니다'}
                 </span>
             </div>
         )
     }
 
-    if (isVideo(url)) {
+    if (mediaType === 'video') {
         return (
-             <video
-                src={currentUrl}
-                className={className}
-                controls={controls}
-                onClick={onClick}
-                onError={handleError}
-            />
+            <div className="relative w-full h-full">
+                <video
+                    src={currentUrl}
+                    className={className}
+                    controls={controls}
+                    onClick={onClick}
+                    onError={handleError}
+                    preload="metadata"
+                    playsInline
+                />
+                {!controls && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none">
+                        <div className="bg-black/50 rounded-full p-3 backdrop-blur-sm">
+                            <Play className="h-6 w-6 text-white fill-white" />
+                        </div>
+                    </div>
+                )}
+            </div>
         )
     }
 

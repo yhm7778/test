@@ -17,6 +17,7 @@ export interface Database {
           role: 'admin' | 'staff' | 'client'
           created_at: string
           scheduled_deletion_at: string | null
+          max_requests: number | null
         }
         Insert: {
           id: string
@@ -25,6 +26,7 @@ export interface Database {
           role?: 'admin' | 'staff' | 'client'
           created_at?: string
           scheduled_deletion_at?: string | null
+          max_requests?: number | null
         }
         Update: {
           id?: string
@@ -33,6 +35,7 @@ export interface Database {
           role?: 'admin' | 'staff' | 'client'
           created_at?: string
           scheduled_deletion_at?: string | null
+          max_requests?: number | null
         }
         Relationships: []
       }

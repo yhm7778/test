@@ -93,8 +93,16 @@ export default function ApplicationForm({ initialData, readOnly = false, type, t
                         throw new Error('신청 가능 횟수를 확인하는 중 오류가 발생했습니다.')
                     }
 
-                    // Default limit 10 (Special cases 15 - requires DB setting)
-                    const limit = 10 
+                    // Fetch user profile for custom limit
+                    const { data: profile } = await supabase
+                        .from('profiles')
+                        .select('max_requests')
+                        .eq('id', user.id)
+                        .single()
+
+                    // Default limit 10, override if set in profile
+                    const limit = profile?.max_requests || 10 
+                    
                     if ((count || 0) >= limit) {
                         throw new Error(`이번 달 신청 가능 횟수(${limit}회)를 초과했습니다. (월 최대 ${limit}회)`)
                     }

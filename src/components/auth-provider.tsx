@@ -60,6 +60,7 @@ export function AuthProvider({
             role: metadataRole ?? 'client',
             created_at: new Date().toISOString(),
             scheduled_deletion_at: null,
+            max_requests: null,
         }
     }
 
@@ -102,6 +103,7 @@ export function AuthProvider({
                     role: metadataRole ?? 'client',
                     created_at: new Date().toISOString(),
                     scheduled_deletion_at: null,
+                    max_requests: null,
                 }
                 : null
 
