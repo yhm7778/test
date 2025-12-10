@@ -1,3 +1,5 @@
+'use server'
+
 import { createClient } from '@/utils/supabase/server'
 import { createClient as createSupabaseClient, SupabaseClient } from '@supabase/supabase-js'
 import { Database } from '@/types/supabase'
