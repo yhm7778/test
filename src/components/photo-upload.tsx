@@ -13,24 +13,24 @@ interface PhotoUploadProps {
 }
 
 // Internal component to handle individual media items with fallback logic
-const SupabaseMedia = ({ 
-    url, 
-    alt, 
-    className, 
-    onClick, 
-    controls = false 
-}: { 
-    url: string, 
-    alt?: string, 
+const SupabaseMedia = ({
+    url,
+    alt,
+    className,
+    onClick,
+    controls = false
+}: {
+    url: string,
+    alt?: string,
     className?: string,
     onClick?: () => void,
-    controls?: boolean 
+    controls?: boolean
 }) => {
     const [currentUrl, setCurrentUrl] = useState(url)
     const [isRetrying, setIsRetrying] = useState(false)
     const [isDead, setIsDead] = useState(false)
     const supabase = createClient()
-    
+
     const isVideo = (path: string) => {
         return path.match(/\.(mp4|webm|ogg|mov|qt|avi|wmv|flv|m4v)(\?|$)/i)
     }
@@ -38,24 +38,24 @@ const SupabaseMedia = ({
     const mediaType = isVideo(url) ? 'video' : 'image'
 
     const handleError = async () => {
-        if (isRetrying || isDead || currentUrl !== url) return 
-        
+        if (isRetrying || isDead || currentUrl !== url) return
+
         setIsRetrying(true)
 
         try {
             // Try to extract path from Supabase Public URL
             // Format example: .../storage/v1/object/public/applications/folder/file.jpg
             const match = url.match(/\/storage\/v1\/object\/public\/applications\/(.+)$/)
-            
+
             if (match && match[1]) {
                 const path = decodeURIComponent(match[1])
                 console.log(`Attempting to recover media: ${path}`)
-                
+
                 const { data, error: signedError } = await supabase
                     .storage
                     .from('applications')
                     .createSignedUrl(path, 3600) // 1 hour validity
-                
+
                 if (!signedError && data?.signedUrl) {
                     console.log('Recovered with signed URL')
                     setCurrentUrl(data.signedUrl)
@@ -226,7 +226,7 @@ export default function PhotoUpload({ photos, setPhotos, initialUrls = [], readO
                             />
                         </div>
                     ))}
-                    
+
                     {photos.map((photo, index) => (
                         <div key={`file-${index}`} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 group">
                             {photo.type.startsWith('video/') ? (
@@ -250,6 +250,7 @@ export default function PhotoUpload({ photos, setPhotos, initialUrls = [], readO
                                         removePhoto(index);
                                     }}
                                     className="absolute top-1 right-1 p-1 bg-white rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                                    aria-label="사진 삭제"
                                 >
                                     <X className="h-4 w-4 text-gray-500" />
                                 </button>
@@ -266,6 +267,7 @@ export default function PhotoUpload({ photos, setPhotos, initialUrls = [], readO
                         <button
                             onClick={() => setSelectedImage(null)}
                             className="absolute -top-10 right-0 text-white hover:text-gray-300"
+                            aria-label="닫기"
                         >
                             <X className="h-8 w-8" />
                         </button>

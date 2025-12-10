@@ -27,7 +27,7 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
     const [viewingApp, setViewingApp] = useState<Application | null>(null)
     const [isDownloading, setIsDownloading] = useState(false)
     const [isDeleting, setIsDeleting] = useState(false)
-    
+
     const supabase = createClient() as SupabaseClient<Database>
     const router = useRouter()
     const [isRefreshing, setIsRefreshing] = useState(false)
@@ -47,7 +47,7 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
                 .select('*')
                 .order('created_at', { ascending: false })
                 .limit(50)
-            
+
             if (data) {
                 setApplications(data as Application[])
             }
@@ -65,7 +65,7 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
             if (!isAdmin && app.is_hidden) return false
 
             // Search term filter
-            const matchesSearch = 
+            const matchesSearch =
                 app.store_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 app.keywords?.some(k => k.toLowerCase().includes(searchTerm.toLowerCase())) ||
                 app.user_id?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -76,7 +76,7 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
                 const appDate = parseISO(app.created_at)
                 const start = startDate ? startOfDay(parseISO(startDate)) : new Date(0)
                 const end = endDate ? endOfDay(parseISO(endDate)) : new Date(8640000000000000)
-                
+
                 matchesDate = isWithinInterval(appDate, { start, end })
             }
 
@@ -105,13 +105,13 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
     const handleStatusToggle = async (app: Application) => {
         const newStatus = app.status === 'completed' ? 'pending' : 'completed'
         const updates: ApplicationUpdate = { status: newStatus }
-        
+
         if (newStatus === 'completed') {
             updates.completion_date = new Date().toISOString()
         } else {
             updates.completion_date = null
         }
-        
+
         const { data, error } = await supabase
             .from('applications')
             .update(updates)
@@ -136,10 +136,10 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
             alert('상태가 완료로 변경되었습니다. (카카오톡 알림 발송 - Stub)')
         }
 
-        setApplications(prev => prev.map(p => 
+        setApplications(prev => prev.map(p =>
             p.id === app.id ? { ...p, ...updates } : p
         ))
-        
+
         // Refresh server data
         refreshData()
     }
@@ -147,7 +147,7 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
     // Bulk Status Update
     const handleBulkStatusUpdate = async (status: 'completed' | 'pending') => {
         if (selectedIds.length === 0) return
-        
+
         // Filter out items that already have the target status
         const targetIds = selectedIds.filter(id => {
             const app = applications.find(a => a.id === id)
@@ -160,7 +160,7 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
             alert(`선택한 모든 항목이 이미 '${statusText}' 상태입니다.`)
             return
         }
-        
+
         if (!confirm(`${targetIds.length}개의 신청서를 ${statusText} 상태로 변경하시겠습니까?`)) return
 
         try {
@@ -191,11 +191,11 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
                 alert(`${targetIds.length}개의 신청서가 미완료 처리되었습니다.`)
             }
 
-            setApplications(prev => prev.map(app => 
+            setApplications(prev => prev.map(app =>
                 targetIds.includes(app.id) ? { ...app, ...updates } : app
             ))
             setSelectedIds([]) // Optional: Clear selection after action
-            
+
             // Refresh server data with a small delay to ensure DB propagation
             refreshData()
         } catch (error) {
@@ -255,7 +255,7 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
     // ZIP Download logic (Server-side)
     const handleDownloadZip = async () => {
         const targetIds = selectedIds.length > 0 ? selectedIds : filteredApplications.map(app => app.id)
-        
+
         if (targetIds.length === 0) {
             alert('다운로드할 항목이 없습니다.')
             return
@@ -296,7 +296,7 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
     }
 
     // Inline edit handlers (Legacy) - Removed unused code
-    
+
     return (
         <div className="space-y-6">
             {/* Control Panel */}
@@ -307,18 +307,20 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
                         <div className="space-y-1">
                             <label className="text-xs font-medium text-gray-500">기간 검색</label>
                             <div className="flex items-center gap-2">
-                                <input 
-                                    type="date" 
-                                    value={startDate} 
+                                <input
+                                    type="date"
+                                    value={startDate}
                                     onChange={(e) => setStartDate(e.target.value)}
                                     className="input-field py-1.5 text-sm w-full sm:w-36"
+                                    aria-label="시작 날짜"
                                 />
                                 <span className="text-gray-400">~</span>
-                                <input 
-                                    type="date" 
-                                    value={endDate} 
+                                <input
+                                    type="date"
+                                    value={endDate}
                                     onChange={(e) => setEndDate(e.target.value)}
                                     className="input-field py-1.5 text-sm w-full sm:w-36"
+                                    aria-label="종료 날짜"
                                 />
                             </div>
                         </div>
@@ -339,60 +341,60 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
 
                     {/* Action Buttons */}
                     {isAdmin && (
-                    <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto justify-end">
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={() => handleBulkStatusUpdate('completed')}
-                                disabled={selectedIds.length === 0}
-                                className="btn-primary py-2 px-3 text-sm flex items-center gap-2 disabled:opacity-50 bg-green-600 hover:bg-green-700 border-green-600 text-white whitespace-nowrap"
-                            >
-                                <CheckSquare className="h-4 w-4" />
-                                선택 완료
-                            </button>
-                            <button
-                                onClick={() => handleBulkStatusUpdate('pending')}
-                                disabled={selectedIds.length === 0}
-                                className="btn-secondary py-2 px-3 text-sm flex items-center gap-2 disabled:opacity-50 bg-yellow-600 hover:bg-yellow-700 border-yellow-600 text-white whitespace-nowrap"
-                            >
-                                <X className="h-4 w-4" />
-                                선택 미완료
-                            </button>
-                        </div>
-                        
-                        <div className="hidden sm:block w-px h-6 bg-gray-300 mx-1"></div>
-                        
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={refreshData}
-                                disabled={isRefreshing}
-                                className="btn-secondary py-2 px-3 text-sm flex items-center gap-2 disabled:opacity-50 whitespace-nowrap"
-                                title="데이터 새로고침"
-                            >
-                                <Loader2 className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                                {isRefreshing ? '갱신 중...' : '새로고침'}
-                            </button>
-                            <button
-                                onClick={() => handleDelete(selectedIds)}
-                                disabled={selectedIds.length === 0 || isDeleting}
-                                className="btn-danger py-2 px-3 text-sm flex items-center gap-2 disabled:opacity-50 bg-red-600 hover:bg-red-700 text-white whitespace-nowrap rounded-md"
-                            >
-                                {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                                선택 삭제
-                            </button>
-                        </div>
+                        <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto justify-end">
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => handleBulkStatusUpdate('completed')}
+                                    disabled={selectedIds.length === 0}
+                                    className="btn-primary py-2 px-3 text-sm flex items-center gap-2 disabled:opacity-50 bg-green-600 hover:bg-green-700 border-green-600 text-white whitespace-nowrap"
+                                >
+                                    <CheckSquare className="h-4 w-4" />
+                                    선택 완료
+                                </button>
+                                <button
+                                    onClick={() => handleBulkStatusUpdate('pending')}
+                                    disabled={selectedIds.length === 0}
+                                    className="btn-secondary py-2 px-3 text-sm flex items-center gap-2 disabled:opacity-50 bg-yellow-600 hover:bg-yellow-700 border-yellow-600 text-white whitespace-nowrap"
+                                >
+                                    <X className="h-4 w-4" />
+                                    선택 미완료
+                                </button>
+                            </div>
 
-                        <button
-                            onClick={handleDownloadZip}
-                            disabled={!filteredApplications.length || isDownloading}
-                            className="btn-primary py-2 px-3 text-sm flex items-center gap-2 disabled:opacity-50 bg-blue-600 hover:bg-blue-700 border-blue-600 text-white whitespace-nowrap w-full sm:w-auto justify-center"
-                        >
-                            {isDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                            {selectedIds.length > 0 ? `${selectedIds.length}개 다운로드` : '전체 다운로드'}
-                        </button>
-                    </div>
+                            <div className="hidden sm:block w-px h-6 bg-gray-300 mx-1"></div>
+
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={refreshData}
+                                    disabled={isRefreshing}
+                                    className="btn-secondary py-2 px-3 text-sm flex items-center gap-2 disabled:opacity-50 whitespace-nowrap"
+                                    title="데이터 새로고침"
+                                >
+                                    <Loader2 className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                                    {isRefreshing ? '갱신 중...' : '새로고침'}
+                                </button>
+                                <button
+                                    onClick={() => handleDelete(selectedIds)}
+                                    disabled={selectedIds.length === 0 || isDeleting}
+                                    className="btn-danger py-2 px-3 text-sm flex items-center gap-2 disabled:opacity-50 bg-red-600 hover:bg-red-700 text-white whitespace-nowrap rounded-md"
+                                >
+                                    {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                    선택 삭제
+                                </button>
+                            </div>
+
+                            <button
+                                onClick={handleDownloadZip}
+                                disabled={!filteredApplications.length || isDownloading}
+                                className="btn-primary py-2 px-3 text-sm flex items-center gap-2 disabled:opacity-50 bg-blue-600 hover:bg-blue-700 border-blue-600 text-white whitespace-nowrap w-full sm:w-auto justify-center"
+                            >
+                                {isDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                                {selectedIds.length > 0 ? `${selectedIds.length}개 다운로드` : '전체 다운로드'}
+                            </button>
+                        </div>
                     )}
                 </div>
-                
+
                 {/* Status Bar */}
                 <div className="flex items-center justify-between text-sm text-gray-600 pt-2 border-t border-gray-100">
                     <div>
@@ -412,18 +414,18 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
                         <thead className="bg-gray-50">
                             <tr>
                                 {isAdmin && (
-                                <th scope="col" className="px-6 py-3 text-left">
-                                    <button 
-                                        onClick={handleSelectAll}
-                                        className="text-gray-500 hover:text-gray-700"
-                                    >
-                                        {selectedIds.length > 0 && selectedIds.length === filteredApplications.length ? (
-                                            <CheckSquare className="h-5 w-5 text-blue-600" />
-                                        ) : (
-                                            <Square className="h-5 w-5" />
-                                        )}
-                                    </button>
-                                </th>
+                                    <th scope="col" className="px-6 py-3 text-left">
+                                        <button
+                                            onClick={handleSelectAll}
+                                            className="text-gray-500 hover:text-gray-700"
+                                        >
+                                            {selectedIds.length > 0 && selectedIds.length === filteredApplications.length ? (
+                                                <CheckSquare className="h-5 w-5 text-blue-600" />
+                                            ) : (
+                                                <Square className="h-5 w-5" />
+                                            )}
+                                        </button>
+                                    </th>
                                 )}
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     신청일시
@@ -456,24 +458,24 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
                                 filteredApplications.map((app) => (
                                     <tr key={app.id} className="hover:bg-gray-50 transition-colors">
                                         {isAdmin && (
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <button 
-                                                onClick={() => toggleSelect(app.id)}
-                                                className="text-gray-500 hover:text-gray-700"
-                                            >
-                                                {selectedIds.includes(app.id) ? (
-                                                    <CheckSquare className="h-5 w-5 text-blue-600" />
-                                                ) : (
-                                                    <Square className="h-5 w-5" />
-                                                )}
-                                            </button>
-                                        </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <button
+                                                    onClick={() => toggleSelect(app.id)}
+                                                    className="text-gray-500 hover:text-gray-700"
+                                                >
+                                                    {selectedIds.includes(app.id) ? (
+                                                        <CheckSquare className="h-5 w-5 text-blue-600" />
+                                                    ) : (
+                                                        <Square className="h-5 w-5" />
+                                                    )}
+                                                </button>
+                                            </td>
                                         )}
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500" suppressHydrationWarning>
                                             {format(parseISO(app.created_at), 'yyyy-MM-dd HH:mm', { locale: ko })}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <button 
+                                            <button
                                                 onClick={() => setViewingApp(app)}
                                                 className="text-sm font-medium text-gray-900 hover:text-blue-600 hover:underline"
                                             >
@@ -490,27 +492,25 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
                                             {isAdmin ? (
                                                 <button
                                                     onClick={() => handleStatusToggle(app)}
-                                                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                                                        app.status === 'completed'
-                                                            ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                                                            : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
-                                                    }`}
+                                                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${app.status === 'completed'
+                                                        ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                                                        : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                                                        }`}
                                                 >
                                                     {app.status === 'completed' ? '완료' : '미완료'}
                                                 </button>
                                             ) : (
-                                                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                                    app.status === 'completed'
-                                                        ? 'bg-green-100 text-green-800'
-                                                        : 'bg-yellow-100 text-yellow-800'
-                                                }`}>
+                                                <span className={`px-3 py-1 rounded-full text-xs font-medium ${app.status === 'completed'
+                                                    ? 'bg-green-100 text-green-800'
+                                                    : 'bg-yellow-100 text-yellow-800'
+                                                    }`}>
                                                     {app.status === 'completed' ? '완료' : '미완료'}
                                                 </span>
                                             )}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <div className="flex items-center justify-end gap-2">
-                                                <button 
+                                                <button
                                                     onClick={() => setViewingApp(app)}
                                                     className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
                                                     title="상세보기"
@@ -518,13 +518,13 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
                                                     <Eye className="h-4 w-4" />
                                                 </button>
                                                 {isAdmin && (
-                                                <button
-                                                    onClick={() => handleDelete([app.id])}
-                                                    className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
-                                                    title="삭제"
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </button>
+                                                    <button
+                                                        onClick={() => handleDelete([app.id])}
+                                                        className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
+                                                        title="삭제"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </button>
                                                 )}
                                             </div>
                                         </td>
@@ -542,18 +542,19 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative">
                         <div className="sticky top-0 bg-white z-10 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
                             <h2 className="text-xl font-bold text-gray-900">신청서 상세 정보</h2>
-                            <button 
+                            <button
                                 onClick={() => setViewingApp(null)}
                                 className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                                aria-label="닫기"
                             >
                                 <X className="h-6 w-6 text-gray-500" />
                             </button>
                         </div>
                         <div className="p-6">
-                            <ApplicationForm 
-                                type={viewingApp.marketing_type?.replace(/_/g, '-')} 
-                                initialData={viewingApp} 
-                                readOnly={true} 
+                            <ApplicationForm
+                                type={viewingApp.marketing_type?.replace(/_/g, '-')}
+                                initialData={viewingApp}
+                                readOnly={true}
                             />
                         </div>
                     </div>

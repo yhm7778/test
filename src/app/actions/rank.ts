@@ -1,194 +1,121 @@
 'use server'
 
-import * as cheerio from 'cheerio'
+import puppeteer from 'puppeteer'
 
 export async function checkRank(keyword: string, placeName: string) {
     if (!keyword || !placeName) {
         return { error: '키워드와 업체명을 모두 입력해주세요.' }
     }
 
+    let browser = null;
     try {
-        const encodedKeyword = encodeURIComponent(keyword)
-        const url = `https://search.naver.com/search.naver?where=nexearch&sm=top_hty&fbm=0&ie=utf8&query=${encodedKeyword}`
+        // Launch Puppeteer
+        // Note: In production (Vercel), this usually fails without specific setup (chromium-r),
+        // but for local or VPS it should work if dependencies are installed.
+        browser = await puppeteer.launch({
+            headless: true,
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage', // Important for Docker/Container
+                '--disable-gpu'
+            ]
+        });
 
-        const response = await fetch(url, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-            },
-            cache: 'no-store'
-        })
+        const page = await browser.newPage();
 
-        if (!response.ok) {
-            return { error: '네이버 검색 결과를 가져오는데 실패했습니다.' }
-        }
+        // Emulate Mobile for Infinite Scroll (Simpler DOM)
+        // Or Desktop for Pagination.
+        // Let's use Mobile as it's often more robust for "Place" listing.
+        await page.setViewport({ width: 375, height: 812 });
+        await page.setUserAgent('Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1');
 
-        const html = await response.text()
-        const $ = cheerio.load(html)
+        const encodedKeyword = encodeURIComponent(keyword);
+        const url = `https://m.place.naver.com/place/list?query=${encodedKeyword}`;
 
-        let realRank = 0
-        let foundOrganic = false
-        let foundAd = false
-        let organicRank = -1
-        let foundName = ''
-        const searchName = placeName.replace(/\s+/g, '').toLowerCase()
+        // Go to page
+        await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
 
-        // Iterate over list items that look like place entries
-        $('li').each((i, el) => {
-            const element = $(el)
-            const htmlContent = element.html() || ''
-            
-            // Check if it's a place item
-            if (htmlContent.includes('place.map.naver.com') || htmlContent.includes('/place/')) {
-                // Extract ID
-                let id = ''
-                const link = element.find('a').attr('href')
-                if (link) {
-                    const idMatch = link.match(/\/place\/(\d+)/)
-                    if (idMatch) {
-                        id = idMatch[1]
+        // Clean serach name
+        const searchName = placeName.replace(/\s+/g, '').toLowerCase();
+
+        // Try simple HTML text check first? No, names are often hidden or in list items.
+
+        // Loop for scrolling/pagination
+        // Mobile Place List uses Infinite Scroll.
+        // We will scroll until we find it or reach a limit (e.g., 100 items or 5 scrolls).
+
+        let found = false;
+        let rank = -1;
+        let foundName = '';
+        const MAX_SCROLLS = 10; // Approx 100-200 items depending on load
+
+        for (let i = 0; i < MAX_SCROLLS; i++) {
+            // Check current items
+            // We evaluate in browser context to return the index of match
+            const checkResult = await page.evaluate((searchName) => {
+                // Select all list items. The class name might change, so we look for structure.
+                // Usually list items are 'li' inside a 'ul' that contains 'place' info.
+                // Naver Mobile Place List usually has a specific container.
+                const listItems = document.querySelectorAll('li'); // Broad selection
+
+                for (let j = 0; j < listItems.length; j++) {
+                    const el = listItems[j];
+                    const text = el.innerText || '';
+                    const cleanText = text.replace(/\s+/g, '').toLowerCase();
+
+                    // Basic check: does the list item contain the name block?
+                    // We should be careful not to match random text.
+                    // Usually there is a strong tag or specific class like .UEzoS (title).
+                    // Let's just check if the text contains the searchName for now.
+                    if (cleanText.includes(searchName) || searchName.includes(cleanText)) {
+
+                        // Try to extract specific title if possible to be sure
+                        // This selector is fragile and might need update if Naver changes UI
+                        // But verifying presence is a good start.
+                        return { found: true, index: j + 1, text: text.split('\n')[0] };
                     }
                 }
+                return { found: false, count: listItems.length };
+            }, searchName);
 
-                if (id) {
-                    // Check if it's an Ad
-                    // Look for specific Ad classes or badges
-                    const adBadge = element.find('.ico_ad, .txt_ad, .sp_ad, .ad_area')
-                    const isAd = adBadge.length > 0 || element.find('span').filter((_, e) => $(e).text() === '광고').length > 0
-                    
-                    // Extract Name
-                    // Try to find the specific name class first (TYaxT seems common)
-                    let name = element.find('.TYaxT').text()
-                    
-                    if (!name) {
-                        // Fallback: Use .place_bluelink but remove children that are usually non-name info
-                        const blueLink = element.find('.place_bluelink').clone()
-                        blueLink.find('.place_blind, .urQl1, .KCMnt, .Yi59N').remove()
-                        name = blueLink.text()
-                    }
-                    
-                    if (!name) {
-                        // Final fallback
-                        name = element.find('a').first().text()
-                    }
-
-                    name = name.trim()
-                    
-                    // Skip if no name extracted - do not force match with placeName
-                    if (!name) {
-                        return; // Skip this element
-                    }
-
-                    // Clean up name for comparison
-                    const currentNameClean = name.replace(/\s+/g, '').toLowerCase()
-                    
-                    if (!isAd) {
-                        realRank++
-                    }
-
-                    if (currentNameClean.includes(searchName) || searchName.includes(currentNameClean)) {
-                        foundName = name
-                        if (isAd) {
-                            foundAd = true
-                        } else {
-                            if (!foundOrganic) {
-                                foundOrganic = true
-                                organicRank = realRank
-                            }
-                        }
-                    }
-                }
+            if (checkResult.found) {
+                found = true;
+                rank = checkResult.index!
+                foundName = checkResult.text!
+                break;
             }
-        })
 
-        if (foundOrganic) {
-            return { 
-                success: true, 
-                rank: organicRank, 
-                message: `현재 "${foundName}"은(는) ${organicRank}위 입니다.` 
-            }
+            // Scroll down
+            await page.evaluate(() => {
+                window.scrollTo(0, document.body.scrollHeight);
+            });
+
+            // Wait for load
+            // Using a simple sleep is safer than waiting for specific network events which might be flaky
+            await new Promise(r => setTimeout(r, 1500));
         }
 
-        // If not found in organic results (or only found as Ad), try deep search via Map API
-        const deepResult = await searchDeepRank(keyword, placeName);
-        if (deepResult) {
+        if (found) {
             return {
                 success: true,
-                rank: deepResult.rank,
-                message: `현재 "${deepResult.name}"은(는) ${deepResult.rank}위 입니다.${foundAd ? ' (통합검색에서는 광고로 노출 중)' : ''}`
-            }
-        }
-
-        if (foundAd) {
-            return { 
-                success: true, 
-                rank: -1, 
-                message: `"${foundName}"은(는) 광고 영역에만 노출되고 있어 실제 순위를 파악할 수 없습니다.` 
+                rank: rank,
+                page: 1, // Mobile is single page infinite scroll
+                message: `현재 "${foundName}"은(는) 전체 목록에서 ${rank}번째에 위치하고 있습니다.`
             }
         } else {
-            return { 
-                success: false, 
-                message: `"${placeName}"을(를) 찾을 수 없습니다.` 
+            return {
+                success: false,
+                message: `"${placeName}"을(를) 찾을 수 없습니다. (상위 100+개 확인)`
             }
         }
 
     } catch (error) {
-        console.error('Rank check error:', error)
-        return { error: '순위 조회 중 오류가 발생했습니다.' }
-    }
-}
-
-async function searchDeepRank(keyword: string, placeName: string) {
-    const encodedKeyword = encodeURIComponent(keyword);
-    const searchName = placeName.replace(/\s+/g, '').toLowerCase();
-    
-    // Search up to 100 pages (2000 items)
-    const MAX_PAGES = 100;
-    
-    for (let page = 1; page <= MAX_PAGES; page++) {
-        try {
-            // Using Naver Map internal API structure
-            const url = `https://map.naver.com/p/api/search/allSearch?query=${encodedKeyword}&type=all&page=${page}&displayCount=20`;
-            const response = await fetch(url, {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    'Referer': 'https://map.naver.com/',
-                    'Accept': 'application/json, text/plain, */*'
-                },
-                cache: 'no-store'
-            });
-
-            if (!response.ok) continue;
-
-            const data = await response.json();
-            const list = data?.result?.place?.list;
-
-            // If list is empty or not an array, we've reached the end of results
-            if (!list || !Array.isArray(list) || list.length === 0) {
-                break;
-            }
-
-            for (let i = 0; i < list.length; i++) {
-                const item = list[i];
-                const itemName = item.name || '';
-                const cleanItemName = itemName.replace(/\s+/g, '').toLowerCase();
-                
-                // Check if this item matches
-                if (cleanItemName.includes(searchName) || searchName.includes(cleanItemName)) {
-                     // Calculate global rank based on page
-                     // Assuming 20 items per page
-                     const rank = (page - 1) * 20 + (i + 1);
-                     return {
-                         rank,
-                         name: itemName,
-                         page
-                     };
-                }
-            }
-            
-        } catch (e) {
-            console.error(`Map deep search error page ${page}:`, e);
+        console.error('Puppeteer Rank Check Error:', error);
+        return { error: '순위 조회 중 오류가 발생했습니다. (서버/브라우저 오류)' }
+    } finally {
+        if (browser) {
+            await browser.close();
         }
     }
-    return null;
 }

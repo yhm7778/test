@@ -22,7 +22,7 @@ export default function LandingButtons({ initialCustomMenus = [] }: { initialCus
                 .from('menu_items')
                 .select('*')
                 .order('order', { ascending: true })
-            
+
             if (data) {
                 setCustomMenus(data as MenuItem[])
             }
@@ -36,33 +36,35 @@ export default function LandingButtons({ initialCustomMenus = [] }: { initialCus
 
     // 기본 메뉴 정의
     const defaultMenus = [
-        { 
-            label: '블로그 기자단 포스팅', 
-            href: '/apply?type=blog-reporter', 
+        {
+            label: '블로그 기자단 포스팅',
+            href: '/apply?type=blog-reporter',
             icon: FileText,
             desc: '전문 기자가 작성하는 고품질 리뷰'
         },
-        { 
-            label: '블로그 체험단 포스팅', 
-            href: '/apply?type=blog-experience', 
+        {
+            label: '블로그 체험단 포스팅',
+            href: '/apply?type=blog-experience',
             icon: User,
             desc: '실제 체험을 바탕으로 한 생생한 후기'
         },
-        { 
-            label: '인스타그램 인기게시물 포스팅', 
-            href: '/apply?type=instagram-popular', 
+        {
+            label: '인스타그램 인기게시물 포스팅',
+            href: '/apply?type=instagram-popular',
             icon: Instagram,
             desc: '인기 게시물 노출을 통한 홍보 효과'
         },
-        { 
-            label: '플레이스 순위 조회하기', 
-            href: '/rank-check', 
+        {
+            label: '플레이스 순위 조회하기',
+            href: '/rank-check',
             icon: MapPin,
             desc: '내 가게의 현재 순위를 실시간 조회'
         },
-        { 
-            label: '기타사항 포스팅', 
-            href: '/apply?type=etc', 
+
+
+        {
+            label: '기타사항 포스팅',
+            href: '/apply?type=etc',
             icon: MoreHorizontal,
             desc: '그 외 다양한 마케팅 문의'
         },
