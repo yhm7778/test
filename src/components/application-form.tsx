@@ -422,7 +422,7 @@ export default function ApplicationForm({ initialData, readOnly = false, type, t
                     <textarea
                         value={advantages}
                         onChange={(e) => setAdvantages(e.target.value)}
-                        className="input-field min-h-[100px] resize-y disabled:bg-gray-100 disabled:text-gray-500"
+                        className="input-field min-h-[400px] resize-y disabled:bg-gray-100 disabled:text-gray-500"
                         placeholder={isSimpleForm ? "작업 관련 메모를 입력하세요." : "신메뉴가 출시된 점 어필해주세요"}
                         required={!isSimpleForm}
                         maxLength={1000}
