@@ -17,7 +17,7 @@ const getBrowser = async () => {
             // await chromium.font('https://raw.githack.com/googlei18n/noto-cjk/master/NotoSansCJKkr-Regular.otf');
 
             browser = await puppeteer.launch({
-                args: chromium.args,
+                args: [...chromium.args, '--no-sandbox', '--disable-setuid-sandbox'],
                 defaultViewport: chromium.defaultViewport,
                 executablePath: await chromium.executablePath(),
                 headless: chromium.headless,
@@ -54,19 +54,32 @@ export async function checkRank(keyword: string, placeName: string) {
 
         // Emulate Mobile
         await page.setViewport({ width: 375, height: 812 });
+        // Use a generic recent iPhone User Agent
         await page.setUserAgent('Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1');
 
         const encodedKeyword = encodeURIComponent(keyword);
         const url = `https://m.place.naver.com/place/list?query=${encodedKeyword}`;
 
-        await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+        // Optimize timeout
+        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+
+        // Wait specifically for the list to appear
+        try {
+            await page.waitForSelector('li', { timeout: 5000 });
+        } catch (e) {
+            console.log('List selector timeout, might be empty result or different structure');
+        }
 
         const searchName = placeName.replace(/\s+/g, '').toLowerCase();
 
         let found = false;
         let rank = -1;
         let foundName = '';
-        const MAX_SCROLLS = 10;
+
+        // Increase scroll limit significantly to reach deeper pages (e.g. page 5 = ~250 items)
+        // Mobile loads ~20 items per scroll.
+        // 50 scrolls * 20 items = 1000 items. This should be enough.
+        const MAX_SCROLLS = 50;
 
         for (let i = 0; i < MAX_SCROLLS; i++) {
             const checkResult = await page.evaluate((searchName: string) => {
@@ -77,6 +90,9 @@ export async function checkRank(keyword: string, placeName: string) {
                     const text = el.innerText || '';
                     const cleanText = text.replace(/\s+/g, '').toLowerCase();
 
+                    // Logic: 
+                    // 1. Exact match cleaned
+                    // 2. Contains (Name contains search, or search contains Name)
                     if (cleanText.includes(searchName) || searchName.includes(cleanText)) {
                         return { found: true, index: j + 1, text: text.split('\n')[0] };
                     }
@@ -91,24 +107,30 @@ export async function checkRank(keyword: string, placeName: string) {
                 break;
             }
 
+            // Scroll down
             await page.evaluate(() => {
                 window.scrollTo(0, document.body.scrollHeight);
             });
 
-            await new Promise(r => setTimeout(r, 1500));
+            // Wait for load
+            // Reduce wait time to 800ms to speed up total execution
+            await new Promise(r => setTimeout(r, 800));
         }
 
         if (found) {
+            // Calculate approximate page for Desktop (50 items per page)
+            const approxPage = Math.floor((rank - 1) / 50) + 1;
+
             return {
                 success: true,
                 rank: rank,
-                page: 1,
-                message: `현재 "${foundName}"은(는) 전체 목록에서 ${rank}번째에 위치하고 있습니다.`
+                page: approxPage,
+                message: `현재 "${foundName}"은(는) 전체 목록에서 ${rank}번째에 위치하고 있습니다. (PC 기준 약 ${approxPage}페이지)`
             }
         } else {
             return {
                 success: false,
-                message: `"${placeName}"을(를) 찾을 수 없습니다. (상위 100+개 확인)`
+                message: `"${placeName}"을(를) 찾을 수 없습니다. (약 50~1000위 까지 확인)`
             }
         }
 
