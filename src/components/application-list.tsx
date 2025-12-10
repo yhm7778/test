@@ -557,7 +557,7 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
                                 readOnly={true}
                             />
 
-                            {isAdmin && (
+                            {isAdmin && false && (
                                 <div className="mt-8 pt-6 border-t border-gray-100">
                                     <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                                         🤖 블로그 자동 포스팅
