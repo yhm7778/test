@@ -115,21 +115,27 @@ export async function checkRank(keyword: string, placeName: string) {
                         }
 
                         // Matching Logic:
-                        // 1. Line contains Search (Strict) -> Always good. "Starbucks Gangnam" includes "Starbucks"
-                        // 2. Search contains Line (Reverse) -> Good for "Starbucks" includes "Starbucks" (Map text), 
-                        //    BUT mostly enabled to support "Starbucks Gangnam" (User) vs "Starbucks" (Map).
-                        //    We re-enable this because valid names might be substrings of user input.
                         if (lineClean.includes(searchName) || searchName.includes(lineClean)) {
-                            matchedLine = line.trim();
-                            isMatch = true;
-                            // If we find a non-numeric match, it's likely the title or a good keyword match.
-                            // If we match a number (and search is numeric), we take it.
-                            break;
-                        }
-                    }
+                            // Found a match in this line (which might be Name + Category combined).
+                            // Try to find a cleaner source: look for a specific child element that contains the searchName.
+                            // This prevents returning "NameCategory" (e.g. "GrillMeat") if they are separate spans but adjacent.
+                            let cleanName = line.trim();
 
-                    if (isMatch) {
-                        return { found: true, index: j + 1, text: matchedLine, count: listItems.length };
+                            try {
+                                const deepMatch = Array.from(el.querySelectorAll('*')).find(child =>
+                                    child.children.length === 0 && // Leaf node (mostly)
+                                    (child as HTMLElement).innerText &&
+                                    (child as HTMLElement).innerText.replace(/\s+/g, '').toLowerCase().includes(searchName)
+                                );
+                                if (deepMatch) {
+                                    cleanName = (deepMatch as HTMLElement).innerText.trim();
+                                }
+                            } catch (e) {
+                                // Fallback to line
+                            }
+
+                            return { found: true, index: j + 1, text: cleanName, count: listItems.length };
+                        }
                     }
                 }
                 return { found: false, count: listItems.length };
