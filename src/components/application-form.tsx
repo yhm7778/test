@@ -283,7 +283,15 @@ ${specialNotes}`
                 // Validate minimum 5 photos per blog post
                 const requestedBlogCount = parseInt(blogCount)
                 const requiredMinPhotos = requestedBlogCount * 5
-                if (photos.length < requiredMinPhotos) {
+
+                if (type === 'instagram-popular') {
+                    if (photos.length < 3) {
+                        throw new Error('사진을 최소 3장 이상 업로드해주세요.')
+                    }
+                    if (photos.length > 9) {
+                        throw new Error('사진은 최대 9장까지만 업로드 가능합니다.')
+                    }
+                } else if (photos.length < requiredMinPhotos) {
                     throw new Error(`블로그 1건당 최소 5장의 사진이 필요합니다. (신청하신 ${requestedBlogCount}건 발행을 위해 최소 ${requiredMinPhotos}장의 사진이 필요합니다)`)
                 }
 
@@ -437,8 +445,8 @@ ${specialNotes}`
                     />
                 </div>
 
-                {/* 발행할 블로그 리뷰 갯수 */}
-                {!isSimpleForm && (
+                {/* 발행할 블로그 리뷰 갯수 - 인스타 인기게시물 제외 */}
+                {!isSimpleForm && type !== 'instagram-popular' && (
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1.5">
                             ■ 발행 할 블로그 리뷰 갯수 (N개) <span className="text-red-500">*</span>
@@ -489,7 +497,7 @@ ${specialNotes}`
                         ) : (
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                                    ■ 사진 : (이미지 기입, 동영상) <span className="text-red-500">*</span>
+                                    ■ 업로드 할 사진/동영상 <span className="text-red-500">*</span>
                                 </label>
                                 <PhotoUpload
                                     photos={photos}
@@ -664,7 +672,7 @@ ${specialNotes}`
                         </div>
 
                         <div className="p-4 bg-gray-50 rounded border border-gray-100 text-sm text-gray-600">
-                            ■ 추가적으로 사진 최대 5장 보내주세요.
+                            ■ 추가적으로 사진 최소 3장 ~ 최대 9장 보내주세요.
                         </div>
                     </div>
                 )}
