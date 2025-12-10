@@ -52,6 +52,8 @@ export default function ApplicationForm({ initialData, readOnly = false, type, t
 
     const [storeName, setStoreName] = useState(initialData?.store_name || '')
     const [photos, setPhotos] = useState<File[]>([])
+    const [beforePhotos, setBeforePhotos] = useState<File[]>([])
+    const [afterPhotos, setAfterPhotos] = useState<File[]>([])
     const [blogCount, setBlogCount] = useState(parseBlogCount(initialData?.notes || null))
     const [keyword1, setKeyword1] = useState(initialData?.keywords?.[0] || '')
     const [keyword2, setKeyword2] = useState(initialData?.keywords?.[1] || '')
@@ -227,13 +229,14 @@ export default function ApplicationForm({ initialData, readOnly = false, type, t
             }
 
             const sanitizedFolder = sanitizeFilename(storeName.trim() || 'store')
-            setUploadProgress({ current: 0, total: photos.length })
+            const totalFiles = (type === 'seo-optimization') ? (beforePhotos.length + afterPhotos.length) : photos.length
+            setUploadProgress({ current: 0, total: totalFiles })
             let completedCount = 0
 
-            // Upload photos in parallel
-            const uploadPromises = photos.map(async (photo) => {
+            // Helper to upload a single file
+            const uploadSingleFile = async (photo: File, prefix: string = '') => {
                 const fileExt = photo.name.split('.').pop()
-                const sanitizedName = sanitizeFilename(`${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`)
+                const sanitizedName = sanitizeFilename(`${prefix}${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`)
                 const objectPath = `${sanitizedFolder}/${sanitizedName}`
 
                 const uploadResult = await uploadWithTimeout(
@@ -261,9 +264,22 @@ export default function ApplicationForm({ initialData, readOnly = false, type, t
                 setUploadProgress(prev => ({ ...prev, current: completedCount }))
 
                 return publicUrl
-            })
+            }
 
-            const photoUrls = await Promise.all(uploadPromises)
+            let photoUrls: string[] = []
+
+            if (type === 'seo-optimization') {
+                // Upload Before Photos
+                const beforePromises = beforePhotos.map(p => uploadSingleFile(p, 'before_'))
+                const afterPromises = afterPhotos.map(p => uploadSingleFile(p, 'after_'))
+                const beforeUrls = await Promise.all(beforePromises)
+                const afterUrls = await Promise.all(afterPromises)
+                photoUrls = [...beforeUrls, ...afterUrls]
+            } else {
+                // Standard Upload
+                const uploadPromises = photos.map(p => uploadSingleFile(p))
+                photoUrls = await Promise.all(uploadPromises)
+            }
 
             // Construct notes
             let finalNotes = ''
@@ -363,22 +379,49 @@ export default function ApplicationForm({ initialData, readOnly = false, type, t
                 {/* 사진 */}
                 {(!isSimpleForm || type === 'seo-optimization') && (
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                            {type === 'seo-optimization'
-                                ? <>■ 이미지 (SEO 전/후, 광고 전/후 비교 등) <span className="text-gray-400 text-xs font-normal ml-2">(선택사항)</span></>
-                                : <>■ 사진 : (이미지 기입, 동영상) <span className="text-red-500">*</span></>
-                            }
-                        </label>
-                        <PhotoUpload
-                            photos={photos}
-                            setPhotos={setPhotos}
-                            initialUrls={initialData?.photo_urls || []}
-                            readOnly={readOnly}
-                        />
-                        {!readOnly && blogCount && !isNaN(Number(blogCount)) && Number(blogCount) > 0 && (
-                            <p className="mt-2 text-sm font-medium text-red-600 bg-red-50 p-3 rounded-md border border-red-100">
-                                * 블로그 1건당 최소 5장의 사진이 필요합니다. (신청하신 {blogCount}건 발행을 위해 최소 {Number(blogCount) * 5}장의 사진이 필요합니다)
-                            </p>
+                        {type === 'seo-optimization' ? (
+                            <div className="space-y-4">
+                                <label className="block text-sm font-medium text-gray-700">
+                                    ■ 비교 이미지 업로드 <span className="text-gray-400 text-xs font-normal ml-2">(선택사항)</span>
+                                </label>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                                        <label className="block text-sm font-bold text-gray-700 mb-2 text-center">BEFORE (작업 전)</label>
+                                        <PhotoUpload
+                                            photos={beforePhotos}
+                                            setPhotos={setBeforePhotos}
+                                            initialUrls={initialData?.photo_urls?.filter(url => !url.includes('/after_')) || []}
+                                            readOnly={readOnly}
+                                        />
+                                    </div>
+                                    <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                                        <label className="block text-sm font-bold text-gray-700 mb-2 text-center">AFTER (작업 후)</label>
+                                        <PhotoUpload
+                                            photos={afterPhotos}
+                                            setPhotos={setAfterPhotos}
+                                            initialUrls={initialData?.photo_urls?.filter(url => url.includes('/after_')) || []}
+                                            readOnly={readOnly}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                    ■ 사진 : (이미지 기입, 동영상) <span className="text-red-500">*</span>
+                                </label>
+                                <PhotoUpload
+                                    photos={photos}
+                                    setPhotos={setPhotos}
+                                    initialUrls={initialData?.photo_urls || []}
+                                    readOnly={readOnly}
+                                />
+                                {!readOnly && blogCount && !isNaN(Number(blogCount)) && Number(blogCount) > 0 && (
+                                    <p className="mt-2 text-sm font-medium text-red-600 bg-red-50 p-3 rounded-md border border-red-100">
+                                        * 블로그 1건당 최소 5장의 사진이 필요합니다. (신청하신 {blogCount}건 발행을 위해 최소 {Number(blogCount) * 5}장의 사진이 필요합니다)
+                                    </p>
+                                )}
+                            </div>
                         )}
                     </div>
                 )}
