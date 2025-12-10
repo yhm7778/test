@@ -65,7 +65,7 @@ export async function checkRank(keyword: string, placeName: string) {
 
         // Wait specifically for the list to appear
         try {
-            await page.waitForSelector('li', { timeout: 5000 });
+            await page.waitForSelector('li', { timeout: 10000 });
         } catch (e) {
             console.log('List selector timeout, might be empty result or different structure');
         }
@@ -77,10 +77,16 @@ export async function checkRank(keyword: string, placeName: string) {
         let rank = -1;
         let foundName = '';
 
-        // Increase scroll limit to 100 (approx 2000 items)
-        const MAX_SCROLLS = 100;
+        // Scroll limit: 50 scrolls * 20 items = 1000 items. 
+        // We focus on RELIABILITY over raw speed/count.
+        const MAX_SCROLLS = 50;
+        let retryCount = 0;
+        const MAX_RETRIES = 3; // Retry scrolling if no new items appear
+
+        let previousItemCount = 0;
 
         for (let i = 0; i < MAX_SCROLLS; i++) {
+            // Check for target
             const checkResult = await page.evaluate((searchName: string, originalPlaceName: string) => {
                 const listItems = document.querySelectorAll('li');
 
@@ -88,15 +94,13 @@ export async function checkRank(keyword: string, placeName: string) {
                     const el = listItems[j];
                     const text = el.innerText || '';
 
-                    // Split text by lines to avoid grabbing "Review Count" or "Distance" as the name
                     const lines = text.split('\n');
-
-                    // Find the best line that matches the name
                     let matchedLine = '';
                     let isMatch = false;
 
                     for (const line of lines) {
                         const lineClean = line.replace(/\s+/g, '').toLowerCase();
+                        // Loose matching: input inside line OR line inside input
                         if (lineClean.includes(searchName) || searchName.includes(lineClean)) {
                             matchedLine = line.trim();
                             isMatch = true;
@@ -105,13 +109,7 @@ export async function checkRank(keyword: string, placeName: string) {
                     }
 
                     if (isMatch) {
-                        // If we found a match, return it. 
-                        // If the matched line is very short (e.g. just "2"), it might be garbage.
-                        // But usually the name is substantial.
-                        // Prefer returning the User's original name for display if it's cleaner,
-                        // but user specifically asked for "found name".
-                        // Let's return the matched line.
-                        return { found: true, index: j + 1, text: matchedLine };
+                        return { found: true, index: j + 1, text: matchedLine, count: listItems.length };
                     }
                 }
                 return { found: false, count: listItems.length };
@@ -124,21 +122,39 @@ export async function checkRank(keyword: string, placeName: string) {
                 break;
             }
 
-            // Smart Scroll: Scroll and wait for height change
-            const previousHeight = await page.evaluate(() => document.body.scrollHeight);
+            const currentItemCount = checkResult.count || 0;
 
+            // Log logic for retries
+            if (currentItemCount === previousItemCount) {
+                retryCount++;
+                if (retryCount >= MAX_RETRIES) {
+                    console.log('Max retries reached, assuming end of list.');
+                    break;
+                }
+                // Small backoff if stuck
+                await new Promise(r => setTimeout(r, 500));
+            } else {
+                retryCount = 0; // Reset retry if we found new items
+            }
+            previousItemCount = currentItemCount;
+
+            // Scroll down
             await page.evaluate(() => {
                 window.scrollTo(0, document.body.scrollHeight);
             });
 
-            // Fast Wait: 1 second timeout for scrolling
+            // Wait for new items to appear
+            // We use standard timeout. Smart wait is good, but reliability is key now.
+            // Wait up to 2 seconds for count to increase.
             try {
                 await page.waitForFunction(
-                    `document.body.scrollHeight > ${previousHeight}`,
-                    { timeout: 1000, polling: 100 }
+                    (prevCount: number) => document.querySelectorAll('li').length > prevCount,
+                    { timeout: 2000, polling: 200 },
+                    currentItemCount
                 );
             } catch (e) {
-                // Ignore timeout, keep scrolling
+                // Timeout just means we didn't load new items FAST enough, or at end.
+                // The retry logic above handles the 'end' or 'stuck' decision.
             }
         }
 
@@ -146,13 +162,13 @@ export async function checkRank(keyword: string, placeName: string) {
             return {
                 success: true,
                 rank: rank,
-                page: 1, // Page isn't really relevant on mobile infinite scroll, but kept for type compatibility
+                page: 1,
                 message: `${foundName} 순위는 ${rank}위 입니다.`
             }
         } else {
             return {
                 success: false,
-                message: `"${placeName}"을(를) 찾을 수 없습니다. (약 100~2000위 까지 확인)`
+                message: `"${placeName}"을(를) 찾을 수 없습니다. (약 ~${previousItemCount}위 까지 확인)`
             }
         }
 
