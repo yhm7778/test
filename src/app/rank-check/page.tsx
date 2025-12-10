@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Search, MapPin, Loader2, ArrowLeft, Info, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import { checkRank } from '../actions/rank'
@@ -10,6 +10,20 @@ export default function RankCheckPage() {
     const [placeName, setPlaceName] = useState('')
     const [isChecking, setIsChecking] = useState(false)
     const [result, setResult] = useState<{ message: string, success?: boolean, rank?: number, page?: number } | null>(null)
+    const [elapsedTime, setElapsedTime] = useState(0)
+
+    useEffect(() => {
+        let interval: NodeJS.Timeout
+        if (isChecking) {
+            setElapsedTime(0)
+            interval = setInterval(() => {
+                setElapsedTime((prev) => prev + 1)
+            }, 1000)
+        }
+        return () => {
+            if (interval) clearInterval(interval)
+        }
+    }, [isChecking])
 
     const handleCheck = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -108,7 +122,7 @@ export default function RankCheckPage() {
                                     <h3 className="text-sm font-medium text-blue-800">조회 시 주의사항</h3>
                                     <div className="mt-2 text-sm text-blue-700">
                                         <ul role="list" className="list-disc pl-5 space-y-1">
-                                            <li>실시간 브라우저 점검으로 시간이 다소 소요될 수 있습니다. (최대 1~2분)</li>
+                                            <li>실시간 브라우저 조회로 시간이 다소 소요될 수 있습니다. (최대 1~2분 소요 예정)</li>
                                             <li>1페이지부터 목록 끝까지 자동으로 탐색합니다.</li>
                                         </ul>
                                     </div>
@@ -125,7 +139,7 @@ export default function RankCheckPage() {
                                 {isChecking ? (
                                     <>
                                         <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
-                                        순위 확인 중...
+                                        순위 확인 중... ({elapsedTime}초 경과)
                                     </>
                                 ) : (
                                     '조회하기'

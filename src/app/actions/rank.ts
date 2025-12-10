@@ -76,10 +76,8 @@ export async function checkRank(keyword: string, placeName: string) {
         let rank = -1;
         let foundName = '';
 
-        // Increase scroll limit significantly to reach deeper pages (e.g. page 5 = ~250 items)
-        // Mobile loads ~20 items per scroll.
-        // 50 scrolls * 20 items = 1000 items. This should be enough.
-        const MAX_SCROLLS = 50;
+        // Increase scroll limit to 100 (approx 2000 items)
+        const MAX_SCROLLS = 100;
 
         for (let i = 0; i < MAX_SCROLLS; i++) {
             const checkResult = await page.evaluate((searchName: string) => {
@@ -90,9 +88,6 @@ export async function checkRank(keyword: string, placeName: string) {
                     const text = el.innerText || '';
                     const cleanText = text.replace(/\s+/g, '').toLowerCase();
 
-                    // Logic: 
-                    // 1. Exact match cleaned
-                    // 2. Contains (Name contains search, or search contains Name)
                     if (cleanText.includes(searchName) || searchName.includes(cleanText)) {
                         return { found: true, index: j + 1, text: text.split('\n')[0] };
                     }
@@ -107,14 +102,22 @@ export async function checkRank(keyword: string, placeName: string) {
                 break;
             }
 
-            // Scroll down
+            // Smart Scroll: Scroll and wait for height change
+            const previousHeight = await page.evaluate(() => document.body.scrollHeight);
+
             await page.evaluate(() => {
                 window.scrollTo(0, document.body.scrollHeight);
             });
 
-            // Wait for load
-            // Reduce wait time to 800ms to speed up total execution
-            await new Promise(r => setTimeout(r, 800));
+            // Wait for load with short timeout (smart wait)
+            try {
+                await page.waitForFunction(
+                    `document.body.scrollHeight > ${previousHeight}`,
+                    { timeout: 2000, polling: 200 }
+                );
+            } catch (e) {
+                // Timeout means no new content loaded within 2s, but we continue just in case
+            }
         }
 
         if (found) {
@@ -125,12 +128,12 @@ export async function checkRank(keyword: string, placeName: string) {
                 success: true,
                 rank: rank,
                 page: approxPage,
-                message: `현재 "${foundName}"은(는) 전체 목록에서 ${rank}번째에 위치하고 있습니다. (PC 기준 약 ${approxPage}페이지)`
+                message: `${foundName} 순위는 ${rank}위 입니다. (PC 기준 약 ${approxPage}페이지)`
             }
         } else {
             return {
                 success: false,
-                message: `"${placeName}"을(를) 찾을 수 없습니다. (약 50~1000위 까지 확인)`
+                message: `"${placeName}"을(를) 찾을 수 없습니다. (약 100~2000위 까지 확인)`
             }
         }
 
