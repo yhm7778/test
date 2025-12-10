@@ -81,7 +81,7 @@ export async function checkRank(keyword: string, placeName: string) {
         const MAX_SCROLLS = 100;
 
         for (let i = 0; i < MAX_SCROLLS; i++) {
-            const checkResult = await page.evaluate((searchName, originalPlaceName) => {
+            const checkResult = await page.evaluate((searchName: string, originalPlaceName: string) => {
                 const listItems = document.querySelectorAll('li');
 
                 for (let j = 0; j < listItems.length; j++) {
