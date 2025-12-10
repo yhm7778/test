@@ -122,8 +122,7 @@ export default function RankCheckPage() {
                                     <h3 className="text-sm font-medium text-blue-800">조회 시 주의사항</h3>
                                     <div className="mt-2 text-sm text-blue-700">
                                         <ul role="list" className="list-disc pl-5 space-y-1">
-                                            <li>실시간 브라우저 조회로 시간이 다소 소요될 수 있습니다. (최대 1~2분 소요 예정)</li>
-                                            <li>1페이지부터 목록 끝까지 자동으로 탐색합니다.</li>
+                                            <li>실시간 브라우저 조회로 검색 깊이에 따라 시간이 소요될 수 있습니다. (최대 1~2분 소요 예정)</li>
                                         </ul>
                                     </div>
                                 </div>

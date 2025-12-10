@@ -70,7 +70,8 @@ export async function checkRank(keyword: string, placeName: string) {
             console.log('List selector timeout, might be empty result or different structure');
         }
 
-        const searchName = placeName.replace(/\s+/g, '').toLowerCase();
+        // Clean user input for loose matching
+        const searchNameClean = placeName.replace(/\s+/g, '').toLowerCase();
 
         let found = false;
         let rank = -1;
@@ -80,20 +81,41 @@ export async function checkRank(keyword: string, placeName: string) {
         const MAX_SCROLLS = 100;
 
         for (let i = 0; i < MAX_SCROLLS; i++) {
-            const checkResult = await page.evaluate((searchName: string) => {
+            const checkResult = await page.evaluate((searchName, originalPlaceName) => {
                 const listItems = document.querySelectorAll('li');
 
                 for (let j = 0; j < listItems.length; j++) {
                     const el = listItems[j];
                     const text = el.innerText || '';
-                    const cleanText = text.replace(/\s+/g, '').toLowerCase();
 
-                    if (cleanText.includes(searchName) || searchName.includes(cleanText)) {
-                        return { found: true, index: j + 1, text: text.split('\n')[0] };
+                    // Split text by lines to avoid grabbing "Review Count" or "Distance" as the name
+                    const lines = text.split('\n');
+
+                    // Find the best line that matches the name
+                    let matchedLine = '';
+                    let isMatch = false;
+
+                    for (const line of lines) {
+                        const lineClean = line.replace(/\s+/g, '').toLowerCase();
+                        if (lineClean.includes(searchName) || searchName.includes(lineClean)) {
+                            matchedLine = line.trim();
+                            isMatch = true;
+                            break;
+                        }
+                    }
+
+                    if (isMatch) {
+                        // If we found a match, return it. 
+                        // If the matched line is very short (e.g. just "2"), it might be garbage.
+                        // But usually the name is substantial.
+                        // Prefer returning the User's original name for display if it's cleaner,
+                        // but user specifically asked for "found name".
+                        // Let's return the matched line.
+                        return { found: true, index: j + 1, text: matchedLine };
                     }
                 }
                 return { found: false, count: listItems.length };
-            }, searchName);
+            }, searchNameClean, placeName);
 
             if (checkResult.found) {
                 found = true;
@@ -109,26 +131,23 @@ export async function checkRank(keyword: string, placeName: string) {
                 window.scrollTo(0, document.body.scrollHeight);
             });
 
-            // Wait for load with short timeout (smart wait)
+            // Fast Wait: 1 second timeout for scrolling
             try {
                 await page.waitForFunction(
                     `document.body.scrollHeight > ${previousHeight}`,
-                    { timeout: 2000, polling: 200 }
+                    { timeout: 1000, polling: 100 }
                 );
             } catch (e) {
-                // Timeout means no new content loaded within 2s, but we continue just in case
+                // Ignore timeout, keep scrolling
             }
         }
 
         if (found) {
-            // Calculate approximate page for Desktop (50 items per page)
-            const approxPage = Math.floor((rank - 1) / 50) + 1;
-
             return {
                 success: true,
                 rank: rank,
-                page: approxPage,
-                message: `${foundName} 순위는 ${rank}위 입니다. (PC 기준 약 ${approxPage}페이지)`
+                page: 1, // Page isn't really relevant on mobile infinite scroll, but kept for type compatibility
+                message: `${foundName} 순위는 ${rank}위 입니다.`
             }
         } else {
             return {
