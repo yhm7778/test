@@ -361,10 +361,13 @@ export default function ApplicationForm({ initialData, readOnly = false, type, t
                 )}
 
                 {/* 사진 */}
-                {!isSimpleForm && (
+                {(!isSimpleForm || type === 'seo-optimization') && (
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                            ■ 사진 : (이미지 기입, 동영상) <span className="text-red-500">*</span>
+                            {type === 'seo-optimization'
+                                ? <>■ 이미지 (SEO 전/후, 광고 전/후 비교 등) <span className="text-gray-400 text-xs font-normal ml-2">(선택사항)</span></>
+                                : <>■ 사진 : (이미지 기입, 동영상) <span className="text-red-500">*</span></>
+                            }
                         </label>
                         <PhotoUpload
                             photos={photos}
