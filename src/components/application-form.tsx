@@ -6,6 +6,7 @@ import { sanitizeHtml, validateFile, sanitizeFilename } from '@/lib/security'
 import { Loader2 } from 'lucide-react'
 
 import { Database } from '@/types/supabase'
+import { submitApplication } from '@/app/actions/application'
 
 interface ApplicationFormProps {
     initialData?: Database['public']['Tables']['applications']['Row']
