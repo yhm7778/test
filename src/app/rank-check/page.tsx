@@ -87,6 +87,10 @@ export default function RankCheckPage() {
                                     onChange={(e) => setKeyword(e.target.value)}
                                 />
                             </div>
+                            <p className="mt-2 text-xs text-blue-600 flex items-center gap-1">
+                                <Info className="h-4 w-4 flex-shrink-0" />
+                                <span>정확한 결과를 위해 '지역명 + 메뉴' (예: 안양 샤브샤브)로 검색해주세요.</span>
+                            </p>
                         </div>
 
                         <div>
