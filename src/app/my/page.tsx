@@ -16,6 +16,14 @@ export default async function MyPage() {
         redirect('/login')
     }
 
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+
+    const isAdmin = profile?.role === 'admin'
+
     const applicationsResponse = await supabase
         .from('applications')
         .select('*')
@@ -38,10 +46,10 @@ export default async function MyPage() {
                     </div>
                 </div>
                 <div className="pb-2">
-                    <WithdrawalModal email={user.email || ''} />
+                    {!isAdmin && <WithdrawalModal email={user.email || ''} />}
                 </div>
             </div>
-            
+
             {/* 컨텐츠 영역 */}
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
                 <ApplicationList initialApplications={applications} isAdmin={false} />

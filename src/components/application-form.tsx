@@ -57,6 +57,20 @@ export default function ApplicationForm({ initialData, readOnly = false, type, t
     const [blogCount, setBlogCount] = useState(parseBlogCount(initialData?.notes || null))
     const [keyword1, setKeyword1] = useState(initialData?.keywords?.[0] || '')
     const [keyword2, setKeyword2] = useState(initialData?.keywords?.[1] || '')
+
+    // Dynamic Fields State
+    const [placeUrl, setPlaceUrl] = useState('')
+    const [appealPoints, setAppealPoints] = useState<string[]>(['', '', ''])
+    const [specialNotes, setSpecialNotes] = useState('')
+    const [providedService, setProvidedService] = useState('')
+    const [experiencePrice, setExperiencePrice] = useState('')
+    const [experienceCount, setExperienceCount] = useState('')
+    const [visitDate, setVisitDate] = useState('')
+    const [visitTime, setVisitTime] = useState('')
+    const [additionalRequest, setAdditionalRequest] = useState('')
+    const [contact, setContact] = useState('')
+
+    // Legacy fallback for edit mode or other types
     const [advantages, setAdvantages] = useState(initialData?.advantages || '')
     const [contentKeywords, setContentKeywords] = useState(initialData?.tags?.join(', ') || '')
     const [agreedToGuidelines, setAgreedToGuidelines] = useState(!!initialData)
@@ -186,6 +200,86 @@ export default function ApplicationForm({ initialData, readOnly = false, type, t
                 throw new Error('상호명을 입력해주세요.')
             }
 
+            // Dynamic Field Aggregation
+            let finalAdvantages = advantages
+            let finalKeywords = !isSimpleForm ? [sanitizeHtml(keyword1.trim()), sanitizeHtml(keyword2.trim())] : []
+            let finalTags = !isSimpleForm ? contentKeywords.split(',').map(k => sanitizeHtml(k.trim())).filter(k => k) : []
+
+            if (type === 'blog-reporter') {
+                if (!placeUrl.trim()) throw new Error('업장 플레이스 URL을 입력해주세요.')
+                if (appealPoints.some(p => !p.trim())) throw new Error('업체 장점 3가지를 모두 입력해주세요.')
+                if (!contentKeywords.trim()) throw new Error('태그키워드를 입력해주세요.')
+
+                finalAdvantages = `- 블로그기자단 리뷰 가이드라인 - 
+        
+■ 상호명 : ${storeName}
+
+■ 대표키워드(제목들어갈 키워드 2개) : ${keyword1}, ${keyword2}
+
+■ 업체 장점및 어필점등 (가이드라인)
+1) ${appealPoints[0]}
+2) ${appealPoints[1]}
+3) ${appealPoints[2]}
+
+■ 태그키워드 : 
+${contentKeywords}
+
+■ 업장 플레이스 URL : ${placeUrl}
+
+■ 추가적으로 사진 최소 5장 ~최대 10장 보내주기.
+
+□ 그 외 특이사항 : 
+${specialNotes}`
+            } else if (type === 'instagram-popular') {
+                if (appealPoints.some(p => !p.trim())) throw new Error('업체 장점 3가지를 모두 입력해주세요.')
+
+                finalAdvantages = `- 인스타 가이드라인 양식 -
+
+■ 업체명 : ${storeName}
+
+■ 업체 장점및 어필점등
+1) ${appealPoints[0]}
+2) ${appealPoints[1]}
+3) ${appealPoints[2]}
+
+■ 추가적으로 사진 최대 5장 보내주기.
+
+□ 그 외 특이사항 : 
+${specialNotes}`
+            } else if (type === 'blog-experience') {
+                if (!providedService.trim()) throw new Error('제공 서비스를 입력해주세요.')
+                if (!experiencePrice.trim()) throw new Error('체험 단가를 입력해주세요.')
+                if (!visitDate.trim()) throw new Error('방문 가능 일자를 입력해주세요.')
+                if (!visitTime.trim()) throw new Error('방문 가능 시간을 입력해주세요.')
+                if (!additionalRequest.trim()) throw new Error('추가 요청사항을 입력해주세요.')
+                if (!contact.trim()) throw new Error('일정 조율 연락처를 입력해주세요.')
+
+                finalAdvantages = `- 체험단 양식 -  
+★ 표시된것만 회신 부탁드립니다
+
+제공서비스 : ★${providedService}
+체험 단가  : ★${experiencePrice}
+체험인원 : ${experienceCount || '-'}
+방문가능일자 : ★${visitDate}
+방문가능시간 : ★${visitTime}
+키워드 : (ex ★ ${keyword1}
+추가 요청사항 : ★ ${additionalRequest}
+일정조율연락처 : ★${contact}`
+            } else {
+                // Legacy validation
+                if (!isSimpleForm) {
+                    if (!keyword1.trim() || !keyword2.trim()) {
+                        throw new Error('대표키워드 2개를 모두 입력해주세요.')
+                    }
+                    if (!advantages.trim()) {
+                        throw new Error('업체 장점 및 어필점을 입력해주세요.')
+                    }
+                    if (!contentKeywords.trim()) {
+                        throw new Error('본문 강조키워드를 입력해주세요.')
+                    }
+                }
+            }
+
             if (!isSimpleForm) {
                 if (!blogCount.trim() || Number.isNaN(Number(blogCount)) || Number(blogCount) <= 0) {
                     throw new Error('발행할 블로그 리뷰 갯수를 입력해주세요.')
@@ -201,15 +295,7 @@ export default function ApplicationForm({ initialData, readOnly = false, type, t
                 if (photos.length === 0) {
                     throw new Error('최소 1장의 사진 또는 동영상을 업로드해주세요.')
                 }
-                if (!keyword1.trim() || !keyword2.trim()) {
-                    throw new Error('대표키워드 2개를 모두 입력해주세요.')
-                }
-                if (!advantages.trim()) {
-                    throw new Error('업체 장점 및 어필점을 입력해주세요.')
-                }
-                if (!contentKeywords.trim()) {
-                    throw new Error('본문 강조키워드를 입력해주세요.')
-                }
+
                 if (!agreedToGuidelines) {
                     throw new Error('주의사항을 확인하고 동의해주세요.')
                 }
@@ -299,28 +385,19 @@ export default function ApplicationForm({ initialData, readOnly = false, type, t
             }
 
             // Insert application with timeout
-            const insertPromise = supabase
-                .from('applications')
-                .insert({
-                    user_id: targetUserId || user?.id || null,
-                    store_name: sanitizeHtml(storeName),
-                    keywords: isSimpleForm ? [] : [sanitizeHtml(keyword1.trim()), sanitizeHtml(keyword2.trim())],
-                    advantages: sanitizeHtml(advantages),
-                    tags: isSimpleForm ? [] : contentKeywords.split(',').map(k => sanitizeHtml(k.trim())).filter(k => k),
-                    notes: finalNotes,
-                    photo_urls: photoUrls,
-                    marketing_type: type?.replace(/-/g, '_') || null,
-                    status: 'pending',
-                })
+            // Insert application via Server Action
+            const result = await submitApplication({
+                storeName: sanitizeHtml(storeName),
+                keywords: finalKeywords,
+                advantages: sanitizeHtml(finalAdvantages),
+                tags: finalTags,
+                notes: finalNotes,
+                photoUrls: photoUrls,
+                marketingType: type?.replace(/-/g, '_') || null,
+                targetUserId: targetUserId
+            })
 
-            const { error: insertError } = await Promise.race([
-                insertPromise,
-                new Promise<{ error: { message: string } | null }>((_, reject) =>
-                    setTimeout(() => reject(new Error('신청서 제출이 지연되고 있습니다. 잠시 후 다시 시도해주세요.')), 20000)
-                )
-            ])
-
-            if (insertError) throw insertError
+            if (result.error) throw new Error(result.error)
 
             // Success
             alert('신청이 완료되었습니다!')
@@ -435,71 +512,373 @@ export default function ApplicationForm({ initialData, readOnly = false, type, t
                     </div>
                 )}
 
-                {/* 대표키워드 2개 */}
-                {!isSimpleForm && (
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                            ■ 대표키워드 (제목들어갈 키워드 2개) <span className="text-red-500">*</span>
-                        </label>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+
+
+                {/* Dynamic Fields Section */}
+                {type === 'blog-reporter' && (
+                    <div className="space-y-6">
+                        {/* 대표 키워드 */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                ■ 대표키워드 (제목들어갈 키워드 2개) <span className="text-red-500">*</span>
+                            </label>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <input
+                                    type="text"
+                                    value={keyword1}
+                                    onChange={(e) => setKeyword1(e.target.value)}
+                                    className="input-field disabled:bg-gray-100 disabled:text-gray-500"
+                                    placeholder="키워드 1 (예: 서울맛집)"
+                                    required
+                                    maxLength={50}
+                                    disabled={readOnly}
+                                />
+                                <input
+                                    type="text"
+                                    value={keyword2}
+                                    onChange={(e) => setKeyword2(e.target.value)}
+                                    className="input-field disabled:bg-gray-100 disabled:text-gray-500"
+                                    placeholder="키워드 2 (예: 강남역데이트)"
+                                    required
+                                    maxLength={50}
+                                    disabled={readOnly}
+                                />
+                            </div>
+                        </div>
+
+                        {/* 업체 장점 */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                ■ 업체 장점 및 어필점 (가이드라인) <span className="text-red-500">*</span>
+                            </label>
+                            <div className="space-y-2">
+                                {[0, 1, 2].map((i) => (
+                                    <div key={i} className="flex gap-2 items-center">
+                                        <span className="text-sm font-medium text-gray-500 w-6">{i + 1})</span>
+                                        <input
+                                            type="text"
+                                            value={appealPoints[i]}
+                                            onChange={(e) => {
+                                                const newPoints = [...appealPoints]
+                                                newPoints[i] = e.target.value
+                                                setAppealPoints(newPoints)
+                                            }}
+                                            className="input-field disabled:bg-gray-100 disabled:text-gray-500"
+                                            placeholder={`장점 ${i + 1} (예: 매장이 깔끔하고 사장님이 친절해요)`}
+                                            required={i === 0 && !readOnly}
+                                            disabled={readOnly}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* 본문 강조 키워드 */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                ■ 태그키워드 (본문 강조) <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                value={contentKeywords}
+                                onChange={(e) => setContentKeywords(e.target.value)}
+                                className="input-field disabled:bg-gray-100 disabled:text-gray-500"
+                                placeholder="#맛집 #데이트 #핫플 (쉼표나 띄어쓰기로 구분)"
+                                required
+                                disabled={readOnly}
+                            />
+                        </div>
+
+                        {/* 플레이스 URL */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                ■ 업장 플레이스 URL
+                            </label>
+                            <input
+                                type="text"
+                                value={placeUrl}
+                                onChange={(e) => setPlaceUrl(e.target.value)}
+                                className="input-field disabled:bg-gray-100 disabled:text-gray-500"
+                                placeholder="https://map.naver.com/..."
+                                disabled={readOnly}
+                            />
+                        </div>
+
+                        {/* 특이사항 */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                □ 그 외 특이사항
+                            </label>
+                            <textarea
+                                value={specialNotes}
+                                onChange={(e) => setSpecialNotes(e.target.value)}
+                                className="input-field min-h-[100px] resize-y disabled:bg-gray-100 disabled:text-gray-500"
+                                placeholder="(예: 경쟁업체 언급 금지 등)"
+                                disabled={readOnly}
+                            />
+                        </div>
+
+                        <div className="p-4 bg-gray-50 rounded border border-gray-100 text-sm text-gray-600">
+                            ■ 추가적으로 사진 최소 5장 ~최대 10장 보내주세요.
+                        </div>
+                    </div>
+                )}
+
+                {/* Instagram Popular Fields */}
+                {type === 'instagram-popular' && (
+                    <div className="space-y-6">
+                        {/* 업체 장점 */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                ■ 업체 장점 및 어필점 <span className="text-red-500">*</span>
+                            </label>
+                            <div className="space-y-2">
+                                {[0, 1, 2].map((i) => (
+                                    <div key={i} className="flex gap-2 items-center">
+                                        <span className="text-sm font-medium text-gray-500 w-6">{i + 1})</span>
+                                        <input
+                                            type="text"
+                                            value={appealPoints[i]}
+                                            onChange={(e) => {
+                                                const newPoints = [...appealPoints]
+                                                newPoints[i] = e.target.value
+                                                setAppealPoints(newPoints)
+                                            }}
+                                            className="input-field disabled:bg-gray-100 disabled:text-gray-500"
+                                            placeholder={`어필 포인트 ${i + 1}`}
+                                            required={i === 0 && !readOnly}
+                                            disabled={readOnly}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* 특이사항 */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                □ 그 외 특이사항
+                            </label>
+                            <textarea
+                                value={specialNotes}
+                                onChange={(e) => setSpecialNotes(e.target.value)}
+                                className="input-field min-h-[100px] resize-y disabled:bg-gray-100 disabled:text-gray-500"
+                                placeholder="특이사항을 입력하세요"
+                                disabled={readOnly}
+                            />
+                        </div>
+
+                        <div className="p-4 bg-gray-50 rounded border border-gray-100 text-sm text-gray-600">
+                            ■ 추가적으로 사진 최대 5장 보내주세요.
+                        </div>
+                    </div>
+                )}
+
+                {/* Blog Experience Fields */}
+                {type === 'blog-experience' && (
+                    <div className="space-y-6">
+                        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800 mb-4">
+                            ★ 표시된 것은 필수 항목입니다. 정확히 기재 부탁드립니다.
+                        </div>
+
+                        {/* 제공 서비스 */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                ■ 제공 서비스 <span className="text-red-500">* (★)</span>
+                            </label>
+                            <input
+                                type="text"
+                                value={providedService}
+                                onChange={(e) => setProvidedService(e.target.value)}
+                                className="input-field disabled:bg-gray-100 disabled:text-gray-500"
+                                placeholder="예: 미트볼 스파게티 2인 + 에이드 1잔"
+                                required
+                                disabled={readOnly}
+                            />
+                        </div>
+
+                        {/* 체험 단가 */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                ■ 체험 단가 <span className="text-red-500">* (★)</span>
+                            </label>
+                            <input
+                                type="text"
+                                value={experiencePrice}
+                                onChange={(e) => setExperiencePrice(e.target.value)}
+                                className="input-field disabled:bg-gray-100 disabled:text-gray-500"
+                                placeholder="예: 5만원"
+                                required
+                                disabled={readOnly}
+                            />
+                        </div>
+
+                        {/* 체험 인원 */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                ■ 체험 인원
+                            </label>
+                            <input
+                                type="text"
+                                value={experienceCount}
+                                onChange={(e) => setExperienceCount(e.target.value)}
+                                className="input-field disabled:bg-gray-100 disabled:text-gray-500"
+                                placeholder="예: 5명 (미입력시 기본 설정)"
+                                disabled={readOnly}
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* 방문 가능 일자 */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                    ■ 방문 가능 일자 <span className="text-red-500">* (★)</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={visitDate}
+                                    onChange={(e) => setVisitDate(e.target.value)}
+                                    className="input-field disabled:bg-gray-100 disabled:text-gray-500"
+                                    placeholder="예: 월~금"
+                                    required
+                                    disabled={readOnly}
+                                />
+                            </div>
+                            {/* 방문 가능 시간 */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                    ■ 방문 가능 시간 <span className="text-red-500">* (★)</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={visitTime}
+                                    onChange={(e) => setVisitTime(e.target.value)}
+                                    className="input-field disabled:bg-gray-100 disabled:text-gray-500"
+                                    placeholder="예: 17시~22시"
+                                    required
+                                    disabled={readOnly}
+                                />
+                            </div>
+                        </div>
+
+                        {/* 키워드 (체험단은 하나로 받거나 2개로 받거나.. 기존 키워드 필드 사용해도 됨, 여기선 별도 예시 따름) */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                ■ 키워드 (대표 제목)
+                            </label>
                             <input
                                 type="text"
                                 value={keyword1}
                                 onChange={(e) => setKeyword1(e.target.value)}
                                 className="input-field disabled:bg-gray-100 disabled:text-gray-500"
-                                placeholder="키워드 1"
-                                required
-                                maxLength={50}
+                                placeholder="예: 서울맛집"
                                 disabled={readOnly}
                             />
+                        </div>
+
+                        {/* 추가 요청사항 */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                ■ 추가 요청사항 <span className="text-red-500">* (★)</span>
+                            </label>
+                            <textarea
+                                value={additionalRequest}
+                                onChange={(e) => setAdditionalRequest(e.target.value)}
+                                className="input-field min-h-[80px] disabled:bg-gray-100 disabled:text-gray-500"
+                                placeholder="예: 신메뉴인 점 필히 어필해주세요"
+                                required
+                                disabled={readOnly}
+                            />
+                        </div>
+
+                        {/* 일정 조율 연락처 */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                ■ 일정 조율 연락처 <span className="text-red-500">* (★)</span>
+                            </label>
                             <input
                                 type="text"
-                                value={keyword2}
-                                onChange={(e) => setKeyword2(e.target.value)}
+                                value={contact}
+                                onChange={(e) => setContact(e.target.value)}
                                 className="input-field disabled:bg-gray-100 disabled:text-gray-500"
-                                placeholder="키워드 2"
+                                placeholder="예: 010-1234-5678"
                                 required
-                                maxLength={50}
                                 disabled={readOnly}
                             />
                         </div>
                     </div>
                 )}
 
-                {/* 업체 장점 및 어필점 */}
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                        ■ {isSimpleForm ? '작업 내용 및 메모' : '업체 장점 및 어필점 등'} <span className={isSimpleForm ? "" : "text-red-500"}>{isSimpleForm ? "" : "*"}</span>
-                    </label>
-                    <textarea
-                        ref={textareaRef}
-                        value={advantages}
-                        onChange={(e) => setAdvantages(e.target.value)}
-                        className="input-field min-h-[400px] resize-y disabled:bg-gray-100 disabled:text-gray-500 overflow-hidden"
-                        placeholder={isSimpleForm ? "작업 관련 메모를 입력하세요." : "신메뉴가 출시된 점 어필해주세요"}
-                        required={!isSimpleForm}
-                        maxLength={1000}
-                        disabled={readOnly}
-                    />
-                </div>
+                {/* Legacy / Simple / Etc fallback */}
+                {(isSimpleForm || (!['blog-reporter', 'instagram-popular', 'blog-experience'].includes(type || ''))) && (
+                    <>
+                        {/* 대표키워드 2개 (Only if needed) */}
+                        {!isSimpleForm && (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                    ■ 대표키워드 (제목들어갈 키워드 2개) <span className="text-red-500">*</span>
+                                </label>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <input
+                                        type="text"
+                                        value={keyword1}
+                                        onChange={(e) => setKeyword1(e.target.value)}
+                                        className="input-field disabled:bg-gray-100 disabled:text-gray-500"
+                                        placeholder="키워드 1"
+                                        required
+                                        maxLength={50}
+                                        disabled={readOnly}
+                                    />
+                                    <input
+                                        type="text"
+                                        value={keyword2}
+                                        onChange={(e) => setKeyword2(e.target.value)}
+                                        className="input-field disabled:bg-gray-100 disabled:text-gray-500"
+                                        placeholder="키워드 2"
+                                        required
+                                        maxLength={50}
+                                        disabled={readOnly}
+                                    />
+                                </div>
+                            </div>
+                        )}
 
-                {/* 본문 강조키워드 */}
-                {!isSimpleForm && (
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                            ■ 본문 강조키워드 <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                            type="text"
-                            value={contentKeywords}
-                            onChange={(e) => setContentKeywords(e.target.value)}
-                            className="input-field disabled:bg-gray-100 disabled:text-gray-500"
-                            placeholder="키워드를 쉼표(,)로 구분하여 입력하세요"
-                            required
-                            maxLength={200}
-                            disabled={readOnly}
-                        />
-                    </div>
+                        {/* 업체 장점 및 어필점 (Legacy Textarea) */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                ■ {isSimpleForm ? '작업 내용 및 메모' : '업체 장점 및 어필점 등'} <span className={isSimpleForm ? "" : "text-red-500"}>{isSimpleForm ? "" : "*"}</span>
+                            </label>
+                            <textarea
+                                ref={textareaRef}
+                                value={advantages}
+                                onChange={(e) => setAdvantages(e.target.value)}
+                                className="input-field min-h-[400px] resize-y disabled:bg-gray-100 disabled:text-gray-500 overflow-hidden"
+                                placeholder={isSimpleForm ? "작업 관련 메모를 입력하세요." : "신메뉴가 출시된 점 어필해주세요"}
+                                required={!isSimpleForm}
+                                maxLength={1000}
+                                disabled={readOnly}
+                            />
+                        </div>
+
+                        {/* 본문 강조키워드 (Legacy) */}
+                        {!isSimpleForm && (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                    ■ 본문 강조키워드 <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={contentKeywords}
+                                    onChange={(e) => setContentKeywords(e.target.value)}
+                                    className="input-field disabled:bg-gray-100 disabled:text-gray-500"
+                                    placeholder="키워드를 쉼표(,)로 구분하여 입력하세요"
+                                    required
+                                    maxLength={200}
+                                    disabled={readOnly}
+                                />
+                            </div>
+                        )}
+                    </>
                 )}
 
                 {/* 주의사항 체크박스 */}
@@ -550,6 +929,6 @@ export default function ApplicationForm({ initialData, readOnly = false, type, t
                     </button>
                 )}
             </div>
-        </form>
+        </form >
     )
 }
