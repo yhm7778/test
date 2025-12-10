@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Database } from '@/types/supabase'
 import { format, parseISO } from 'date-fns'
-import { Loader2, Save, Search, User, RefreshCw, Plus, X } from 'lucide-react'
+import { Loader2, Save, Search, User, RefreshCw, Plus, X, Settings } from 'lucide-react'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 
@@ -21,6 +21,7 @@ export default function UserManager() {
     const [newUserPassword, setNewUserPassword] = useState('')
     const [newUserName, setNewUserName] = useState('')
     const [isCreating, setIsCreating] = useState(false)
+    const [isAccountManagerOpen, setIsAccountManagerOpen] = useState(false)
 
     const fetchProfiles = useCallback(async () => {
         setIsLoading(true)
@@ -148,6 +149,13 @@ export default function UserManager() {
                     />
                 </div>
                 <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setIsAccountManagerOpen(true)}
+                        className="btn-secondary py-2 px-3 text-sm flex items-center gap-2 bg-purple-50 text-purple-700 hover:bg-purple-100 border-purple-200"
+                    >
+                        <Settings className="h-4 w-4" />
+                        블로그 계정 관리
+                    </button>
                     <button
                         onClick={() => setIsCreateModalOpen(true)}
                         className="btn-primary py-2 px-3 text-sm flex items-center gap-2"
@@ -340,6 +348,34 @@ export default function UserManager() {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+            {/* Blog Account Manager Modal (Placeholder) */}
+            {isAccountManagerOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 relative">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-xl font-bold text-gray-900">블로그 계정 관리</h3>
+                            <button onClick={() => setIsAccountManagerOpen(false)} aria-label="닫기">
+                                <X className="h-6 w-6 text-gray-500" />
+                            </button>
+                        </div>
+                        <div className="space-y-4 text-center py-4">
+                            <div className="bg-purple-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <Settings className="h-8 w-8 text-purple-600" />
+                            </div>
+                            <h4 className="text-lg font-semibold text-gray-900">기능 준비중입니다</h4>
+                            <p className="text-gray-500">
+                                자동 포스팅을 위한 블로그 계정(Naver, Tistory 등)을<br />
+                                등록하고 관리하는 기능이 곧 업데이트 될 예정입니다.
+                            </p>
+                            <div className="pt-4">
+                                <button onClick={() => setIsAccountManagerOpen(false)} className="btn-primary w-full justify-center">
+                                    확인
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

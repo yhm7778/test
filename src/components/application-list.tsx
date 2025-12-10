@@ -556,6 +556,30 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
                                 initialData={viewingApp}
                                 readOnly={true}
                             />
+
+                            {isAdmin && (
+                                <div className="mt-8 pt-6 border-t border-gray-100">
+                                    <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                        🤖 블로그 자동 포스팅
+                                        <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 text-xs font-normal">Beta</span>
+                                    </h3>
+                                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">포스팅 계정 선택</label>
+                                            <select disabled className="input-field w-full bg-gray-100 text-gray-400 cursor-not-allowed" aria-label="포스팅 계정 선택">
+                                                <option>연동된 계정이 없습니다 (기능 준비중)</option>
+                                            </select>
+                                        </div>
+                                        <button disabled className="btn-secondary w-full py-2.5 flex items-center justify-center gap-2 opacity-50 cursor-not-allowed text-gray-500">
+                                            <span className="hidden">Loading...</span> {/* Hidden loader placeholder */}
+                                            자동 포스팅 시작 (준비중)
+                                        </button>
+                                        <p className="text-xs text-gray-500 text-center">
+                                            * 추후 양식과 사진을 기반으로 블로그 글을 자동 생성하고 발행합니다. (다계정 지원 예정)
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
