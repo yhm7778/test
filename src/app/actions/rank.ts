@@ -98,16 +98,32 @@ export async function checkRank(keyword: string, placeName: string) {
                     let matchedLine = '';
                     let isMatch = false;
 
+                    // Helper to check if string is mostly numeric
+                    const isNumeric = (s: string) => /^[\d.,]+$/.test(s);
+                    const isSearchNumeric = isNumeric(searchName);
+
                     for (const line of lines) {
                         const lineClean = line.replace(/\s+/g, '').toLowerCase();
                         if (!lineClean) continue;
 
-                        // Strict matching: The Naver text MUST contain the search keyword.
-                        // We removed the reverse check (searchName.includes(lineClean)) because it matched single digits (e.g. '9') against longer keywords (e.g. '98percent').
-                        if (lineClean.includes(searchName)) {
+                        const isLineNumeric = isNumeric(lineClean);
+
+                        // Safeguard: If user searches "98%", we don't want to match "9" (rank number).
+                        // So if Search is NOT numeric, but Line IS numeric, we skip this match.
+                        if (!isSearchNumeric && isLineNumeric) {
+                            continue;
+                        }
+
+                        // Matching Logic:
+                        // 1. Line contains Search (Strict) -> Always good. "Starbucks Gangnam" includes "Starbucks"
+                        // 2. Search contains Line (Reverse) -> Good for "Starbucks" includes "Starbucks" (Map text), 
+                        //    BUT mostly enabled to support "Starbucks Gangnam" (User) vs "Starbucks" (Map).
+                        //    We re-enable this because valid names might be substrings of user input.
+                        if (lineClean.includes(searchName) || searchName.includes(lineClean)) {
                             matchedLine = line.trim();
                             isMatch = true;
-                            // We prefer the first matching line as it's likely the title
+                            // If we find a non-numeric match, it's likely the title or a good keyword match.
+                            // If we match a number (and search is numeric), we take it.
                             break;
                         }
                     }
