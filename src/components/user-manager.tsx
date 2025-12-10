@@ -290,14 +290,14 @@ export default function UserManager() {
 
                         <form onSubmit={handleCreateAccount} className="p-6 space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">아이디 (이메일) *</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">아이디</label>
                                 <input
-                                    type="email"
+                                    type="text"
                                     required
                                     className="input-field w-full"
                                     value={newUserId}
                                     onChange={(e) => setNewUserId(e.target.value)}
-                                    placeholder="user@example.com"
+                                    placeholder="아이디 입력"
                                 />
                             </div>
                             <div>

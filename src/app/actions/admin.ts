@@ -93,7 +93,7 @@ export async function updateUserLimit(userId: string, limit: number) {
     return { success: true }
 }
 
-export async function createClientAccount(email: string, password: string, name?: string) {
+export async function createClientAccount(userId: string, password: string, name?: string) {
     const supabase = await createClient()
 
     // Check admin
@@ -125,7 +125,21 @@ export async function createClientAccount(email: string, password: string, name?
         }
     )
 
-    // Create user
+    // 1. Check if ID (username) already exists
+    const { data: existingUser } = await adminSupabase
+        .from('profiles')
+        .select('id')
+        .eq('username', userId)
+        .single()
+
+    if (existingUser) {
+        return { error: '이미 존재하는 아이디입니다.' }
+    }
+
+    // 2. Generate dummy email
+    const email = `${crypto.randomUUID()}@vision.local`
+
+    // 3. Create user
     const { data: newUser, error } = await adminSupabase.auth.admin.createUser({
         email,
         password,
@@ -138,15 +152,13 @@ export async function createClientAccount(email: string, password: string, name?
 
     if (error) return { error: error.message }
 
-    // Ensure profile exists (triggers usually handle this, but if we need manual update):
-    // If triggers rely on public.users, auth.users insert triggers it.
-    // If we need to set specific fields in profiles that trigger missed (like name?), update it here.
-    if (newUser.user && name) {
+    // 4. Update profile with correct username (ID)
+    if (newUser.user) {
         // Wait a small bit for trigger or just update
         await new Promise(r => setTimeout(r, 500)); // weak consistency for trigger
         await adminSupabase
             .from('profiles')
-            .update({ username: name })
+            .update({ username: userId })
             .eq('id', newUser.user.id)
     }
 
