@@ -77,9 +77,9 @@ export async function checkRank(keyword: string, placeName: string) {
         let rank = -1;
         let foundName = '';
 
-        // Scroll limit: 50 scrolls * 20 items = 1000 items. 
-        // We focus on RELIABILITY over raw speed/count.
-        const MAX_SCROLLS = 50;
+        // Scroll limit: We limit to approx 100 items.
+        // Mobile loads ~20 items per scroll. 6 scrolls = 120 items.
+        const MAX_SCROLLS = 6;
         let retryCount = 0;
         const MAX_RETRIES = 3; // Retry scrolling if no new items appear
 
@@ -142,6 +142,11 @@ export async function checkRank(keyword: string, placeName: string) {
             }
             previousItemCount = currentItemCount;
 
+            // Stop if we have checked more than 100 items
+            if (currentItemCount >= 100) {
+                break;
+            }
+
             // Scroll down
             await page.evaluate(() => {
                 window.scrollTo(0, document.body.scrollHeight);
@@ -172,7 +177,7 @@ export async function checkRank(keyword: string, placeName: string) {
         } else {
             return {
                 success: false,
-                message: `"${placeName}"을(를) 찾을 수 없습니다. (약 ~${previousItemCount}위 까지 확인)`
+                message: `"${placeName}"을(를) 100위 내에서 찾을 수 없습니다.`
             }
         }
 
