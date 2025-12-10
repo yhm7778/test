@@ -66,7 +66,7 @@ export default function LoginPage() {
             if (result.error) throw new Error(result.error)
 
             alert('회원가입이 완료되었습니다.')
-            
+
             // Use hard navigation for immediate state update
             window.location.href = '/'
         } catch (error: unknown) {
@@ -138,14 +138,14 @@ export default function LoginPage() {
                         >
                             {isLoading ? <Loader2 className="animate-spin h-5 w-5" /> : '로그인'}
                         </button>
-                        <button
-                            type="button"
-                            onClick={handleSignUp}
-                            disabled={isLoading}
-                            className="btn-secondary w-full"
+                        <a
+                            href="http://pf.kakao.com/_BnWWG"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn-secondary w-full text-center"
                         >
-                            회원가입
-                        </button>
+                            문의하기
+                        </a>
                     </div>
                 </form>
             </div>

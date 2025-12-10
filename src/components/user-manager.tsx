@@ -1,31 +1,32 @@
-'use client'
-
 import { useState, useEffect, useCallback } from 'react'
 import { Database } from '@/types/supabase'
 import { format, parseISO } from 'date-fns'
-import { Loader2, Save, Search, User, RefreshCw } from 'lucide-react'
+import { Loader2, Save, Search, User, RefreshCw, Plus, X } from 'lucide-react'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 
-import { updateUserLimit, getClients } from '@/app/actions/admin'
+import { updateUserLimit, getClients, createClientAccount } from '@/app/actions/admin'
 
 export default function UserManager() {
     const [profiles, setProfiles] = useState<Profile[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState('')
     const [updatingId, setUpdatingId] = useState<string | null>(null)
-    const [limitValues, setLimitValues] = useState<{[key: string]: string}>({})
+    const [limitValues, setLimitValues] = useState<{ [key: string]: string }>({})
     const [warning, setWarning] = useState<string | null>(null)
 
-    // Remove client-side supabase instance
-    // const supabase = createClient()
+    // Account Creation State
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+    const [newUserId, setNewUserId] = useState('')
+    const [newUserPassword, setNewUserPassword] = useState('')
+    const [newUserName, setNewUserName] = useState('')
+    const [isCreating, setIsCreating] = useState(false)
 
     const fetchProfiles = useCallback(async () => {
         setIsLoading(true)
         try {
-            // Use Server Action instead of client-side fetch
             const { data, error, warning: warningMsg } = await getClients()
-            
+
             if (error) throw new Error(error)
 
             if (warningMsg) {
@@ -35,11 +36,9 @@ export default function UserManager() {
             }
 
             if (data) {
-                // Type assertion for data from Server Action
                 const profilesData = data as unknown as Profile[]
                 setProfiles(profilesData)
-                // Initialize input values
-                const initialValues: {[key: string]: string} = {}
+                const initialValues: { [key: string]: string } = {}
                 profilesData.forEach(p => {
                     initialValues[p.id] = (p.max_requests ?? 10).toString()
                 })
@@ -74,11 +73,9 @@ export default function UserManager() {
         setUpdatingId(profile.id)
         try {
             const result = await updateUserLimit(profile.id, newValue)
-
             if (result.error) throw new Error(result.error)
 
-            // Update local state
-            setProfiles(prev => prev.map(p => 
+            setProfiles(prev => prev.map(p =>
                 p.id === profile.id ? { ...p, max_requests: newValue } : p
             ))
             alert('신청 한도가 수정되었습니다.')
@@ -90,7 +87,33 @@ export default function UserManager() {
         }
     }
 
-    const filteredProfiles = profiles.filter(p => 
+    const handleCreateAccount = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!newUserId || !newUserPassword) {
+            alert('아이디와 비밀번호를 입력해주세요.')
+            return
+        }
+
+        setIsCreating(true)
+        try {
+            const result = await createClientAccount(newUserId, newUserPassword, newUserName)
+            if (result.error) throw new Error(result.error)
+
+            alert('계정이 생성되었습니다.')
+            setIsCreateModalOpen(false)
+            setNewUserId('')
+            setNewUserPassword('')
+            setNewUserName('')
+            fetchProfiles() // Refresh list
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Unknown error'
+            alert(`계정 생성 실패: ${message}`)
+        } finally {
+            setIsCreating(false)
+        }
+    }
+
+    const filteredProfiles = profiles.filter(p =>
         (p.email?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
         (p.username?.toLowerCase() || '').includes(searchTerm.toLowerCase())
     )
@@ -124,14 +147,23 @@ export default function UserManager() {
                         className="input-field pl-9 py-2 text-sm w-full"
                     />
                 </div>
-                <button 
-                    onClick={fetchProfiles} 
-                    className="btn-secondary py-2 px-3 text-sm flex items-center gap-2"
-                    disabled={isLoading}
-                >
-                    <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                    새로고침
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setIsCreateModalOpen(true)}
+                        className="btn-primary py-2 px-3 text-sm flex items-center gap-2"
+                    >
+                        <Plus className="h-4 w-4" />
+                        계정 생성
+                    </button>
+                    <button
+                        onClick={fetchProfiles}
+                        className="btn-secondary py-2 px-3 text-sm flex items-center gap-2"
+                        disabled={isLoading}
+                    >
+                        <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                        새로고침
+                    </button>
+                </div>
             </div>
 
             <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
@@ -195,11 +227,11 @@ export default function UserManager() {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                                ${profile.role === 'admin' ? 'bg-purple-100 text-purple-800' : 
-                                                  profile.role === 'staff' ? 'bg-blue-100 text-blue-800' : 
-                                                  'bg-gray-100 text-gray-800'}`}>
-                                                {profile.role === 'admin' ? '관리자' : 
-                                                 profile.role === 'staff' ? '직원' : '일반'}
+                                                ${profile.role === 'admin' ? 'bg-purple-100 text-purple-800' :
+                                                    profile.role === 'staff' ? 'bg-blue-100 text-blue-800' :
+                                                        'bg-gray-100 text-gray-800'}`}>
+                                                {profile.role === 'admin' ? '관리자' :
+                                                    profile.role === 'staff' ? '직원' : '일반'}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
@@ -231,7 +263,7 @@ export default function UserManager() {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            {/* 기존 관리 버튼 영역 (필요 시 다른 기능 추가 가능) */}
+                                            {/* 기존 관리 버튼 영역 */}
                                         </td>
                                     </tr>
                                 ))
@@ -240,6 +272,77 @@ export default function UserManager() {
                     </table>
                 </div>
             </div>
+
+            {/* Create Account Modal */}
+            {isCreateModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                            <h3 className="font-semibold text-gray-900">클라이언트 계정 생성</h3>
+                            <button
+                                onClick={() => setIsCreateModalOpen(false)}
+                                className="text-gray-400 hover:text-gray-500"
+                                aria-label="닫기"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleCreateAccount} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">아이디 (이메일) *</label>
+                                <input
+                                    type="email"
+                                    required
+                                    className="input-field w-full"
+                                    value={newUserId}
+                                    onChange={(e) => setNewUserId(e.target.value)}
+                                    placeholder="user@example.com"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">비밀번호 *</label>
+                                <input
+                                    type="password"
+                                    required
+                                    className="input-field w-full"
+                                    value={newUserPassword}
+                                    onChange={(e) => setNewUserPassword(e.target.value)}
+                                    placeholder="6자 이상 입력"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">이름 (선택)</label>
+                                <input
+                                    type="text"
+                                    className="input-field w-full"
+                                    value={newUserName}
+                                    onChange={(e) => setNewUserName(e.target.value)}
+                                    placeholder="사용자 이름"
+                                />
+                            </div>
+
+                            <div className="pt-2 flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsCreateModalOpen(false)}
+                                    className="btn-secondary flex-1"
+                                >
+                                    취소
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={isCreating}
+                                    className="btn-primary flex-1 flex items-center justify-center gap-2"
+                                >
+                                    {isCreating && <Loader2 className="h-4 w-4 animate-spin" />}
+                                    계정 생성
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
