@@ -76,7 +76,7 @@ export default function LandingButtons({ initialCustomMenus = [] }: { initialCus
             {defaultMenus.map((menu, index) => (
                 <Link
                     key={index}
-                    href={user ? menu.href : '/login'}
+                    href={user || menu.href === '/rank-check' ? menu.href : '/login'}
                     className="group relative flex items-center p-5 bg-white rounded-xl border-2 border-transparent shadow-sm hover:shadow-md hover:border-gray-900 transition-all duration-200"
                 >
                     <div className="flex-shrink-0 mr-4 p-3 bg-gray-50 rounded-full group-hover:bg-gray-900 transition-colors">
