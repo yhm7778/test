@@ -34,8 +34,13 @@ export default function LandingButtons({ initialCustomMenus = [] }: { initialCus
         return <div className="h-96 flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div></div>
     }
 
-    // 기본 메뉴 정의
     const defaultMenus = [
+        {
+            label: '플레이스 순위 조회하기',
+            href: '/rank-check',
+            icon: MapPin,
+            desc: '내 가게의 현재 순위를 실시간 조회'
+        },
         {
             label: '블로그 기자단 포스팅',
             href: '/apply?type=blog-reporter',
@@ -54,14 +59,6 @@ export default function LandingButtons({ initialCustomMenus = [] }: { initialCus
             icon: Instagram,
             desc: '인기 게시물 노출을 통한 홍보 효과'
         },
-        {
-            label: '플레이스 순위 조회하기',
-            href: '/rank-check',
-            icon: MapPin,
-            desc: '내 가게의 현재 순위를 실시간 조회'
-        },
-
-
         {
             label: '기타사항 포스팅',
             href: '/apply?type=etc',
