@@ -621,9 +621,7 @@ ${specialNotes}`
                             />
                         </div>
 
-                        <div className="p-4 bg-gray-50 rounded border border-gray-100 text-sm text-gray-600">
-                            ■ 추가적으로 사진 최소 5장 ~최대 10장 보내주세요.
-                        </div>
+
                     </div>
                 )}
 

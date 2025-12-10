@@ -18,8 +18,8 @@ export default function LoginPage() {
     // Redirect if already logged in
     useEffect(() => {
         const checkUser = async () => {
-            const { data: { session } } = await supabase.auth.getSession()
-            if (session) {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (user) {
                 router.replace('/')
             }
         }

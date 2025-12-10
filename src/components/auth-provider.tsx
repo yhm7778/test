@@ -20,23 +20,26 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export function AuthProvider({ 
-    children, 
+export function AuthProvider({
+    children,
     initialSession = null,
+    initialUser = null,
     initialProfile = null
-}: { 
+}: {
     children: React.ReactNode
     initialSession?: Session | null
+    initialUser?: User | null
     initialProfile?: Profile | null
 }) {
-    const [user, setUser] = useState<User | null>(initialSession?.user ?? null)
+    const [user, setUser] = useState<User | null>(initialUser ?? initialSession?.user ?? null)
     const [session, setSession] = useState<Session | null>(initialSession)
-    
+
     // Initialize profile from initialProfile (server-fetched) or metadata
     const getInitialProfile = (): Profile | null => {
         if (initialProfile) return initialProfile
-        if (!initialSession?.user) return null
-        
+        const targetUser = initialUser ?? initialSession?.user
+        if (!targetUser) return null
+
         const normalizeRole = (role: unknown): Profile['role'] | undefined => {
             if (typeof role !== 'string') return undefined
             const value = role.trim().toLowerCase()
@@ -47,26 +50,26 @@ export function AuthProvider({
         }
 
         const metadataRole =
-            normalizeRole(initialSession.user.user_metadata?.role) ||
-            normalizeRole(initialSession.user.app_metadata?.role) ||
-            (Array.isArray(initialSession.user.app_metadata?.roles)
-                ? normalizeRole(initialSession.user.app_metadata?.roles[0])
+            normalizeRole(targetUser.user_metadata?.role) ||
+            normalizeRole(targetUser.app_metadata?.role) ||
+            (Array.isArray(targetUser.app_metadata?.roles)
+                ? normalizeRole(targetUser.app_metadata?.roles[0])
                 : undefined)
-                
+
         return {
-            id: initialSession.user.id,
-            email: initialSession.user.email ?? null,
-            username: initialSession.user.user_metadata?.username ?? initialSession.user.email?.split('@')[0] ?? null,
+            id: targetUser.id,
+            email: targetUser.email ?? null,
+            username: targetUser.user_metadata?.username ?? targetUser.email?.split('@')[0] ?? null,
             role: metadataRole ?? 'client',
-            created_at: initialSession.user.created_at,
+            created_at: targetUser.created_at,
             scheduled_deletion_at: null,
             max_requests: null,
         }
     }
 
     const [profile, setProfile] = useState<Profile | null>(getInitialProfile())
-    // If we have an initial session, we aren't "loading" in the blocking sense
-    const [isLoading, setIsLoading] = useState(!initialSession) 
+    // If we have an initial session or user, we aren't "loading" in the blocking sense
+    const [isLoading, setIsLoading] = useState(!initialSession && !initialUser)
     const [isSigningOut, setIsSigningOut] = useState(false)
     const router = useRouter()
     const supabase = createClient()
@@ -111,13 +114,13 @@ export function AuthProvider({
                 // Check session storage cache first for immediate feedback
                 const cacheKey = `profile_${session.user.id}`
                 const cachedProfileStr = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(cacheKey) : null
-                
+
                 if (cachedProfileStr) {
                     try {
                         const cached = JSON.parse(cachedProfileStr)
                         setProfile(cached)
                         // If we have a cache, we can stop loading immediately
-                        setIsLoading(false) 
+                        setIsLoading(false)
                     } catch (e) {
                         console.error('Error parsing cached profile', e)
                     }
@@ -151,9 +154,9 @@ export function AuthProvider({
                         const mergedProfile = profileData && normalizedDbRole
                             ? { ...profileData, role: normalizedDbRole }
                             : fallbackProfile
-                        
+
                         setProfile(mergedProfile)
-                        
+
                         // Update cache
                         if (typeof sessionStorage !== 'undefined') {
                             sessionStorage.setItem(cacheKey, JSON.stringify(mergedProfile))
@@ -210,7 +213,7 @@ export function AuthProvider({
             if (typeof sessionStorage !== 'undefined') {
                 sessionStorage.clear()
             }
-            
+
             const signOutTasks = Promise.allSettled([
                 supabase.auth.signOut(),
                 serverSignOut(),

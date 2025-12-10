@@ -33,15 +33,15 @@ export default async function RootLayout({
 }>) {
   const supabase = await createClient();
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+  } = await supabase.auth.getUser();
 
   let profile: Database['public']['Tables']['profiles']['Row'] | null = null;
-  if (session?.user) {
+  if (user) {
     const { data } = await supabase
       .from('profiles')
       .select('*')
-      .eq('id', session.user.id)
+      .eq('id', user.id)
       .single();
     profile = data as Database['public']['Tables']['profiles']['Row'] | null;
   }
@@ -51,7 +51,7 @@ export default async function RootLayout({
       <body
         className={`${inter.variable} ${notoSansKr.variable} antialiased font-sans min-h-screen flex flex-col bg-white`}
       >
-        <AuthProvider initialSession={session} initialProfile={profile}>
+        <AuthProvider initialUser={user} initialProfile={profile}>
           <AccountRecoveryModal />
           <Header />
           {/* 
