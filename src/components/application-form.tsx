@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, FormEvent, useEffect } from 'react'
+import { useState, FormEvent, useEffect, useRef } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 import PhotoUpload from './photo-upload'
@@ -66,6 +66,15 @@ export default function ApplicationForm({ initialData, readOnly = false, type, t
 
     const router = useRouter()
     const supabase = createClient()
+    const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+    // Auto-resize textarea
+    useEffect(() => {
+        if (textareaRef.current) {
+            textareaRef.current.style.height = 'auto'
+            textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px'
+        }
+    }, [advantages])
 
     // Template Definitions
     const TEMPLATES = {
@@ -463,9 +472,10 @@ export default function ApplicationForm({ initialData, readOnly = false, type, t
                         ■ {isSimpleForm ? '작업 내용 및 메모' : '업체 장점 및 어필점 등'} <span className={isSimpleForm ? "" : "text-red-500"}>{isSimpleForm ? "" : "*"}</span>
                     </label>
                     <textarea
+                        ref={textareaRef}
                         value={advantages}
                         onChange={(e) => setAdvantages(e.target.value)}
-                        className="input-field min-h-[400px] resize-y disabled:bg-gray-100 disabled:text-gray-500"
+                        className="input-field min-h-[400px] resize-y disabled:bg-gray-100 disabled:text-gray-500 overflow-hidden"
                         placeholder={isSimpleForm ? "작업 관련 메모를 입력하세요." : "신메뉴가 출시된 점 어필해주세요"}
                         required={!isSimpleForm}
                         maxLength={1000}
