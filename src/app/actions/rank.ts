@@ -100,10 +100,14 @@ export async function checkRank(keyword: string, placeName: string) {
 
                     for (const line of lines) {
                         const lineClean = line.replace(/\s+/g, '').toLowerCase();
-                        // Loose matching: input inside line OR line inside input
-                        if (lineClean.includes(searchName) || searchName.includes(lineClean)) {
+                        if (!lineClean) continue;
+
+                        // Strict matching: The Naver text MUST contain the search keyword.
+                        // We removed the reverse check (searchName.includes(lineClean)) because it matched single digits (e.g. '9') against longer keywords (e.g. '98percent').
+                        if (lineClean.includes(searchName)) {
                             matchedLine = line.trim();
                             isMatch = true;
+                            // We prefer the first matching line as it's likely the title
                             break;
                         }
                     }
