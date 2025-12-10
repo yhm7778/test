@@ -143,12 +143,7 @@ export default function ApplicationForm({ initialData, readOnly = false, type, t
 일정조율연락처 : ★01012345678`
     }
 
-    // Set initial template if advantages is empty and not edit mode
-    useEffect(() => {
-        if (!initialData && !advantages && type && type in TEMPLATES) {
-            setAdvantages(TEMPLATES[type as keyof typeof TEMPLATES])
-        }
-    }, [type, initialData, advantages])
+
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault()
@@ -607,7 +602,7 @@ ${specialNotes}`
                         {/* 특이사항 */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                                □ 그 외 특이사항
+                                ■ 그 외 특이사항
                             </label>
                             <textarea
                                 value={specialNotes}
@@ -657,7 +652,7 @@ ${specialNotes}`
                         {/* 특이사항 */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                                □ 그 외 특이사항
+                                ■ 그 외 특이사항
                             </label>
                             <textarea
                                 value={specialNotes}
@@ -684,7 +679,7 @@ ${specialNotes}`
                         {/* 제공 서비스 */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                                ■ 제공 서비스 <span className="text-red-500">* (★)</span>
+                                ■ 제공 서비스 <span className="text-red-500">*</span>
                             </label>
                             <input
                                 type="text"
@@ -700,7 +695,7 @@ ${specialNotes}`
                         {/* 체험 단가 */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                                ■ 체험 단가 <span className="text-red-500">* (★)</span>
+                                ■ 체험 단가 <span className="text-red-500">*</span>
                             </label>
                             <input
                                 type="text"
@@ -732,7 +727,7 @@ ${specialNotes}`
                             {/* 방문 가능 일자 */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                                    ■ 방문 가능 일자 <span className="text-red-500">* (★)</span>
+                                    ■ 방문 가능 일자 <span className="text-red-500">*</span>
                                 </label>
                                 <input
                                     type="text"
@@ -747,7 +742,7 @@ ${specialNotes}`
                             {/* 방문 가능 시간 */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                                    ■ 방문 가능 시간 <span className="text-red-500">* (★)</span>
+                                    ■ 방문 가능 시간 <span className="text-red-500">*</span>
                                 </label>
                                 <input
                                     type="text"
@@ -779,7 +774,7 @@ ${specialNotes}`
                         {/* 추가 요청사항 */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                                ■ 추가 요청사항 <span className="text-red-500">* (★)</span>
+                                ■ 추가 요청사항 <span className="text-red-500">*</span>
                             </label>
                             <textarea
                                 value={additionalRequest}
@@ -794,7 +789,7 @@ ${specialNotes}`
                         {/* 일정 조율 연락처 */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                                ■ 일정 조율 연락처 <span className="text-red-500">* (★)</span>
+                                ■ 일정 조율 연락처 <span className="text-red-500">*</span>
                             </label>
                             <input
                                 type="text"
