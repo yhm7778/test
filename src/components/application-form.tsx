@@ -58,10 +58,31 @@ export default function ApplicationForm({ initialData, readOnly = false, type, t
     const [keyword1, setKeyword1] = useState(initialData?.keywords?.[0] || '')
     const [keyword2, setKeyword2] = useState(initialData?.keywords?.[1] || '')
 
+    // Parse appeal points and special notes from initialData if available
+    const parseAppealPoints = (advantages: string | null): string[] => {
+        if (!advantages) return ['', '', '']
+        const matches = [
+            advantages.match(/1\)\s*(.+?)(?=\r?\n2\)|\r?\n\r?\n|$)/),
+            advantages.match(/2\)\s*(.+?)(?=\r?\n3\)|\r?\n\r?\n|$)/),
+            advantages.match(/3\)\s*(.+?)(?=\r?\n|$)/)
+        ]
+        return [
+            matches[0]?.[1]?.trim() || '',
+            matches[1]?.[1]?.trim() || '',
+            matches[2]?.[1]?.trim() || ''
+        ]
+    }
+
+    const parseSpecialNotes = (advantages: string | null): string => {
+        if (!advantages) return ''
+        const match = advantages.match(/□ 그 외 특이사항\s*:\s*(.+?)$/)
+        return match?.[1]?.trim() || ''
+    }
+
     // Dynamic Fields State
     const [placeUrl, setPlaceUrl] = useState('')
-    const [appealPoints, setAppealPoints] = useState<string[]>(['', '', ''])
-    const [specialNotes, setSpecialNotes] = useState('')
+    const [appealPoints, setAppealPoints] = useState<string[]>(parseAppealPoints(initialData?.advantages || null))
+    const [specialNotes, setSpecialNotes] = useState(parseSpecialNotes(initialData?.advantages || null))
     const [providedService, setProvidedService] = useState('')
     const [experiencePrice, setExperiencePrice] = useState('')
     const [experienceCount, setExperienceCount] = useState('')
