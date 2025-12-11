@@ -131,9 +131,23 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
         }
 
         if (newStatus === 'completed') {
-            // Kakao Notification Stub
+            // Send notification via API
             console.log(`[Kakao Notification] Sending completion notification to user ${app.user_id} for application ${app.id}`)
-            alert('상태가 완료로 변경되었습니다. (카카오톡 알림 발송 - Stub)')
+
+            // Call API to send notification (non-blocking)
+            fetch('/api/notifications/send-completion', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    applicationId: app.id,
+                    userId: app.user_id,
+                    marketingType: app.marketing_type
+                })
+            }).catch(err => {
+                console.error('Notification API call failed:', err)
+            })
+
+            alert('상태가 완료로 변경되었습니다. (카카오톡 알림 발송 중)')
         }
 
         setApplications(prev => prev.map(p =>

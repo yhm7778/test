@@ -3,6 +3,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { createClient as createSupabaseClient, SupabaseClient } from '@supabase/supabase-js'
 import { Database } from '@/types/supabase'
+import { sendApplicationCompletedNotification } from './notification'
 
 export async function getClients() {
     const supabase = await createClient()
@@ -164,6 +165,69 @@ export async function createClientAccount(userId: string, password: string, name
                 phone: phone
             })
             .eq('id', newUser.user.id)
+    }
+
+    return { success: true }
+}
+
+/**
+ * Update application status and send notification if completed
+ */
+export async function updateApplicationStatus(
+    applicationId: string,
+    newStatus: 'pending' | 'completed',
+    userId: string,
+    marketingType: string | null
+) {
+    const supabase = await createClient()
+
+    // Check admin/staff permission
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'Unauthorized' }
+
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+
+    if (!profile || (profile.role !== 'admin' && profile.role !== 'staff')) {
+        return { error: 'Unauthorized' }
+    }
+
+    // Update status
+    const { error: updateError } = await supabase
+        .from('applications')
+        .update({ status: newStatus })
+        .eq('id', applicationId)
+
+    if (updateError) {
+        return { error: updateError.message }
+    }
+
+    // Send notification if completed
+    if (newStatus === 'completed') {
+        try {
+            // Get user profile for phone and username
+            const { data: userProfile } = await supabase
+                .from('profiles')
+                .select('phone, username')
+                .eq('id', userId)
+                .single() as { data: { phone?: string; username?: string } | null }
+
+            if (userProfile?.phone) {
+                // Send notification (don't await to avoid blocking)
+                sendApplicationCompletedNotification({
+                    recipientPhone: userProfile.phone,
+                    applicationType: marketingType || 'etc'
+                }).catch(err => {
+                    console.error('Notification error:', err)
+                })
+            }
+        } catch (err) {
+            console.error('Notification setup error:', err)
+            // Don't fail the status update if notification fails
+        }
     }
 
     return { success: true }
