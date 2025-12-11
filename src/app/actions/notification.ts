@@ -162,11 +162,28 @@ export async function sendApplicationCompletedNotification(params: {
         const apiKey = process.env.SOLAPI_API_KEY
         const apiSecret = process.env.SOLAPI_API_SECRET
         const pfId = process.env.SOLAPI_KAKAO_CHANNEL_ID
-        const templateId = process.env.SOLAPI_TEMPLATE_APPLICATION_SUBMITTED
 
-        if (!apiKey || !apiSecret || !pfId || !templateId) {
+        if (!apiKey || !apiSecret || !pfId) {
             console.warn('Solapi 설정이 완료되지 않았습니다.')
             return { success: true, message: '알림톡 설정 대기 중' }
+        }
+
+        // 신청 타입별 템플릿 ID 매핑
+        const templateIdMap: Record<string, string | undefined> = {
+            'blog-reporter': process.env.SOLAPI_TEMPLATE_BLOG_REPORTER_COMPLETED,
+            'blog_reporter': process.env.SOLAPI_TEMPLATE_BLOG_REPORTER_COMPLETED,
+            'blog-experience': process.env.SOLAPI_TEMPLATE_BLOG_EXPERIENCE_COMPLETED,
+            'blog_experience': process.env.SOLAPI_TEMPLATE_BLOG_EXPERIENCE_COMPLETED,
+            'instagram-popular': process.env.SOLAPI_TEMPLATE_INSTAGRAM_COMPLETED,
+            'instagram_popular': process.env.SOLAPI_TEMPLATE_INSTAGRAM_COMPLETED,
+        }
+
+        // 타입별 템플릿 ID 또는 기본 완료 템플릿 ID 사용
+        const templateId = templateIdMap[params.applicationType] || process.env.SOLAPI_TEMPLATE_APPLICATION_COMPLETED
+
+        if (!templateId) {
+            console.warn('템플릿 ID가 설정되지 않았습니다.')
+            return { success: true, message: '템플릿 설정 대기 중' }
         }
 
         const formattedPhone = params.recipientPhone.replace(/[^0-9]/g, '')
