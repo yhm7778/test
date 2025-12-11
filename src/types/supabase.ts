@@ -57,6 +57,10 @@ export interface Database {
           completion_date: string | null
           is_hidden: boolean
           files_deleted: boolean
+          before_content: string | null
+          after_content: string | null
+          before_media_urls: string[] | null
+          after_media_urls: string[] | null
         }
         Insert: {
           id?: string
@@ -75,6 +79,10 @@ export interface Database {
           completion_date?: string | null
           is_hidden?: boolean
           files_deleted?: boolean
+          before_content?: string | null
+          after_content?: string | null
+          before_media_urls?: string[] | null
+          after_media_urls?: string[] | null
         }
         Update: {
           id?: string
@@ -93,6 +101,10 @@ export interface Database {
           completion_date?: string | null
           is_hidden?: boolean
           files_deleted?: boolean
+          before_content?: string | null
+          after_content?: string | null
+          before_media_urls?: string[] | null
+          after_media_urls?: string[] | null
         }
         Relationships: []
       }

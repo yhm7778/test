@@ -1,0 +1,182 @@
+'use client'
+
+import { useState } from 'react'
+import { Image as ImageIcon, Video } from 'lucide-react'
+import MediaViewer from './media-viewer'
+
+interface BeforeAfterComparisonProps {
+    beforeContent: string | null
+    afterContent: string | null
+    beforeMediaUrls: string[] | null
+    afterMediaUrls: string[] | null
+}
+
+export default function BeforeAfterComparison({
+    beforeContent,
+    afterContent,
+    beforeMediaUrls,
+    afterMediaUrls
+}: BeforeAfterComparisonProps) {
+    const [activeTab, setActiveTab] = useState<'before' | 'after'>('before')
+    const [viewerOpen, setViewerOpen] = useState(false)
+    const [viewerUrls, setViewerUrls] = useState<string[]>([])
+    const [viewerIndex, setViewerIndex] = useState(0)
+
+    const openViewer = (urls: string[], index: number) => {
+        setViewerUrls(urls)
+        setViewerIndex(index)
+        setViewerOpen(true)
+    }
+
+    const isVideo = (url: string) => url.match(/\.(mp4|webm|ogg)$/i)
+
+    const hasBeforeData = beforeContent || (beforeMediaUrls && beforeMediaUrls.length > 0)
+    const hasAfterData = afterContent || (afterMediaUrls && afterMediaUrls.length > 0)
+
+    if (!hasBeforeData && !hasAfterData) {
+        return null
+    }
+
+    return (
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-500 to-purple-600 px-6 py-4">
+                <h2 className="text-xl font-bold text-white">작업 전/후 비교</h2>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex border-b border-gray-200">
+                <button
+                    onClick={() => setActiveTab('before')}
+                    className={`
+                        flex-1 px-6 py-4 font-medium transition-colors
+                        ${activeTab === 'before'
+                            ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                        }
+                    `}
+                >
+                    작업 전 (BEFORE)
+                </button>
+                <button
+                    onClick={() => setActiveTab('after')}
+                    className={`
+                        flex-1 px-6 py-4 font-medium transition-colors
+                        ${activeTab === 'after'
+                            ? 'text-purple-600 border-b-2 border-purple-600 bg-purple-50'
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                        }
+                    `}
+                >
+                    작업 후 (AFTER)
+                </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6">
+                {activeTab === 'before' ? (
+                    <div className="space-y-6">
+                        {beforeContent && (
+                            <div>
+                                <h3 className="text-sm font-semibold text-gray-700 mb-2">설명</h3>
+                                <p className="text-gray-900 whitespace-pre-wrap">{beforeContent}</p>
+                            </div>
+                        )}
+                        {beforeMediaUrls && beforeMediaUrls.length > 0 && (
+                            <div>
+                                <h3 className="text-sm font-semibold text-gray-700 mb-3">
+                                    미디어 ({beforeMediaUrls.length})
+                                </h3>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                    {beforeMediaUrls.map((url, index) => (
+                                        <div
+                                            key={url}
+                                            className="relative aspect-square cursor-pointer group"
+                                            onClick={() => openViewer(beforeMediaUrls, index)}
+                                        >
+                                            {isVideo(url) ? (
+                                                <div className="relative w-full h-full bg-gray-900 rounded-lg overflow-hidden">
+                                                    <video
+                                                        src={url}
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-colors">
+                                                        <Video className="w-12 h-12 text-white" />
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <img
+                                                    src={url}
+                                                    alt={`작업 전 ${index + 1}`}
+                                                    className="w-full h-full object-cover rounded-lg group-hover:opacity-90 transition-opacity"
+                                                />
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        {!hasBeforeData && (
+                            <p className="text-gray-500 text-center py-8">작업 전 데이터가 없습니다.</p>
+                        )}
+                    </div>
+                ) : (
+                    <div className="space-y-6">
+                        {afterContent && (
+                            <div>
+                                <h3 className="text-sm font-semibold text-gray-700 mb-2">설명</h3>
+                                <p className="text-gray-900 whitespace-pre-wrap">{afterContent}</p>
+                            </div>
+                        )}
+                        {afterMediaUrls && afterMediaUrls.length > 0 && (
+                            <div>
+                                <h3 className="text-sm font-semibold text-gray-700 mb-3">
+                                    미디어 ({afterMediaUrls.length})
+                                </h3>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                    {afterMediaUrls.map((url, index) => (
+                                        <div
+                                            key={url}
+                                            className="relative aspect-square cursor-pointer group"
+                                            onClick={() => openViewer(afterMediaUrls, index)}
+                                        >
+                                            {isVideo(url) ? (
+                                                <div className="relative w-full h-full bg-gray-900 rounded-lg overflow-hidden">
+                                                    <video
+                                                        src={url}
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-colors">
+                                                        <Video className="w-12 h-12 text-white" />
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <img
+                                                    src={url}
+                                                    alt={`작업 후 ${index + 1}`}
+                                                    className="w-full h-full object-cover rounded-lg group-hover:opacity-90 transition-opacity"
+                                                />
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        {!hasAfterData && (
+                            <p className="text-gray-500 text-center py-8">작업 후 데이터가 없습니다.</p>
+                        )}
+                    </div>
+                )}
+            </div>
+
+            {/* Media Viewer Modal */}
+            {viewerOpen && (
+                <MediaViewer
+                    mediaUrls={viewerUrls}
+                    initialIndex={viewerIndex}
+                    onClose={() => setViewerOpen(false)}
+                />
+            )}
+        </div>
+    )
+}

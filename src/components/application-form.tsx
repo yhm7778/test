@@ -9,6 +9,7 @@ import { Loader2 } from 'lucide-react'
 
 import { Database } from '@/types/supabase'
 import { submitApplication, getLastApplication } from '@/app/actions/application'
+import BeforeAfterComparison from './before-after-comparison'
 
 interface ApplicationFormProps {
     initialData?: Database['public']['Tables']['applications']['Row']
@@ -539,6 +540,16 @@ ${specialNotes}`
                     <div className="p-4 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
                         {error}
                     </div>
+                )}
+
+                {/* BEFORE/AFTER Comparison */}
+                {readOnly && initialData && (
+                    <BeforeAfterComparison
+                        beforeContent={initialData.before_content}
+                        afterContent={initialData.after_content}
+                        beforeMediaUrls={initialData.before_media_urls}
+                        afterMediaUrls={initialData.after_media_urls}
+                    />
                 )}
 
                 {/* 상호명 */}
