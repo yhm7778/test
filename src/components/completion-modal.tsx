@@ -184,9 +184,10 @@ export default function CompletionModal({
                                         </span>
                                     </div>
                                     <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                                        {/* eslint-disable-next-line react/forbid-dom-props */}
                                         <div
                                             className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
-                                            style={{ width: `${uploadProgress.percent}%` } as React.CSSProperties}
+                                            style={{ width: `${uploadProgress.percent}%` }}
                                         />
                                     </div>
                                 </div>
