@@ -95,6 +95,10 @@ export default function UserManager() {
             alert('아이디와 비밀번호를 입력해주세요.')
             return
         }
+        if (!newUserPhone) {
+            alert('전화번호를 입력해주세요.')
+            return
+        }
 
         setIsCreating(true)
         try {
@@ -332,13 +336,14 @@ export default function UserManager() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">전화번호 (선택)</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">전화번호 <span className="text-red-500">*</span></label>
                                 <input
                                     type="tel"
                                     className="input-field w-full"
                                     value={newUserPhone}
                                     onChange={(e) => setNewUserPhone(e.target.value)}
                                     placeholder="010-1234-5678"
+                                    required
                                 />
                                 <p className="mt-1 text-xs text-gray-500">알림톡 수신용 전화번호</p>
                             </div>
