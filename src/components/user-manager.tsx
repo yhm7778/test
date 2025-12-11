@@ -304,7 +304,7 @@ export default function UserManager() {
 
                         <form onSubmit={handleCreateAccount} className="p-6 space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">아이디</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">아이디 <span className="text-red-500">*</span></label>
                                 <input
                                     type="text"
                                     required
@@ -315,7 +315,7 @@ export default function UserManager() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">비밀번호 *</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">비밀번호 <span className="text-red-500">*</span></label>
                                 <input
                                     type="password"
                                     required
