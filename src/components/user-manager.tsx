@@ -20,6 +20,7 @@ export default function UserManager() {
     const [newUserId, setNewUserId] = useState('')
     const [newUserPassword, setNewUserPassword] = useState('')
     const [newUserName, setNewUserName] = useState('')
+    const [newUserPhone, setNewUserPhone] = useState('')
     const [isCreating, setIsCreating] = useState(false)
     const [isAccountManagerOpen, setIsAccountManagerOpen] = useState(false)
 
@@ -97,7 +98,7 @@ export default function UserManager() {
 
         setIsCreating(true)
         try {
-            const result = await createClientAccount(newUserId, newUserPassword, newUserName)
+            const result = await createClientAccount(newUserId, newUserPassword, newUserName, newUserPhone)
             if (result.error) throw new Error(result.error)
 
             alert('계정이 생성되었습니다.')
@@ -105,6 +106,7 @@ export default function UserManager() {
             setNewUserId('')
             setNewUserPassword('')
             setNewUserName('')
+            setNewUserPhone('')
             fetchProfiles() // Refresh list
         } catch (error: unknown) {
             const message = error instanceof Error ? error.message : 'Unknown error'
@@ -328,6 +330,17 @@ export default function UserManager() {
                                     onChange={(e) => setNewUserName(e.target.value)}
                                     placeholder="사용자 이름"
                                 />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">전화번호 (선택)</label>
+                                <input
+                                    type="tel"
+                                    className="input-field w-full"
+                                    value={newUserPhone}
+                                    onChange={(e) => setNewUserPhone(e.target.value)}
+                                    placeholder="010-1234-5678"
+                                />
+                                <p className="mt-1 text-xs text-gray-500">알림톡 수신용 전화번호</p>
                             </div>
 
                             <div className="pt-2 flex gap-3">

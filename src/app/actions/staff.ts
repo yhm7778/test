@@ -62,7 +62,7 @@ export async function createStaffAccount(username: string, password: string, nam
     }
 
     const supabase = await createServerClient() as SupabaseClient<Database>
-    
+
     // Check if current user is admin
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
@@ -142,7 +142,7 @@ export async function createStaffAccount(username: string, password: string, nam
 
 export async function updateUserRole(userId: string, role: 'admin' | 'staff' | 'client') {
     const supabase = await createServerClient() as SupabaseClient<Database>
-    
+
     // Check if current user is admin (session-based)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
@@ -200,6 +200,57 @@ export async function updateUserRole(userId: string, role: 'admin' | 'staff' | '
 
     if (authUpdateError) {
         return { error: authUpdateError.message }
+    }
+
+    return { success: true }
+}
+
+export async function deleteUser(userId: string) {
+    const supabase = await createServerClient() as SupabaseClient<Database>
+
+    // Check if current user is admin
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+        return { error: '로그인이 필요합니다.' }
+    }
+
+    const profileResult = await supabase
+        .from('profiles')
+        .select('id, role')
+        .eq<'id'>('id', user.id as ProfileRow['id'])
+        .maybeSingle<Pick<ProfileRow, 'id' | 'role'>>()
+
+    if (profileResult.error) {
+        return { error: '프로필 정보를 불러오지 못했습니다.' }
+    }
+
+    const profile = profileResult.data
+
+    if (!profile || profile.role !== 'admin') {
+        return { error: '관리자 권한이 필요합니다.' }
+    }
+
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    if (!serviceRoleKey) {
+        return { error: '서비스 역할 키가 설정되지 않았습니다.' }
+    }
+
+    const supabaseAdmin = createSupabaseAdminClient<Database>(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        serviceRoleKey,
+        {
+            auth: {
+                autoRefreshToken: false,
+                persistSession: false,
+            },
+        }
+    )
+
+    // Delete user from auth (this will cascade delete profile due to FK constraint)
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(userId)
+
+    if (error) {
+        return { error: error.message }
     }
 
     return { success: true }

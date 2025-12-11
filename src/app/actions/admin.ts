@@ -93,7 +93,7 @@ export async function updateUserLimit(userId: string, limit: number) {
     return { success: true }
 }
 
-export async function createClientAccount(userId: string, password: string, name?: string) {
+export async function createClientAccount(userId: string, password: string, name?: string, phone?: string) {
     const supabase = await createClient()
 
     // Check admin
@@ -146,19 +146,23 @@ export async function createClientAccount(userId: string, password: string, name
         email_confirm: true, // Auto confirm
         user_metadata: {
             role: 'client', // Force client role
-            full_name: name
+            full_name: name,
+            phone: phone
         }
     })
 
     if (error) return { error: error.message }
 
-    // 4. Update profile with correct username (ID)
+    // 4. Update profile with correct username (ID) and phone
     if (newUser.user) {
         // Wait a small bit for trigger or just update
         await new Promise(r => setTimeout(r, 500)); // weak consistency for trigger
         await adminSupabase
             .from('profiles')
-            .update({ username: userId })
+            .update({
+                username: userId,
+                phone: phone
+            })
             .eq('id', newUser.user.id)
     }
 

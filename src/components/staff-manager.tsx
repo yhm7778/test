@@ -75,16 +75,17 @@ export default function StaffManager() {
     }
 
     const handleProcessResignation = async (userId: string) => {
-        if (!confirm('퇴사 처리 시 해당 직원의 관리자/직원 권한이 제거됩니다. 진행하시겠습니까?')) return
+        if (!confirm('퇴사 처리 시 해당 직원의 계정이 완전히 삭제됩니다. 진행하시겠습니까?')) return
 
         try {
-            const result = await updateUserRole(userId, 'client')
+            const { deleteUser } = await import('@/app/actions/staff')
+            const result = await deleteUser(userId)
             if (result.error) {
                 alert('퇴사 처리 중 오류: ' + result.error)
                 return
             }
 
-            alert('퇴사 처리가 완료되었습니다. (권한이 제거되었습니다)')
+            alert('퇴사 처리가 완료되었습니다. (계정이 삭제되었습니다)')
             await loadStaffMembers()
         } catch (error: unknown) {
             console.error('Error processing resignation:', error)
@@ -148,11 +149,10 @@ export default function StaffManager() {
                         </div>
                         {createStatus && (
                             <div
-                                className={`text-sm font-semibold rounded-xl px-4 py-3 ${
-                                    createStatus.type === 'success'
+                                className={`text-sm font-semibold rounded-xl px-4 py-3 ${createStatus.type === 'success'
                                         ? 'bg-green-50 text-green-700 border border-green-100'
                                         : 'bg-red-50 text-red-600 border border-red-100'
-                                }`}
+                                    }`}
                                 role="status"
                                 aria-live="polite"
                             >
@@ -208,12 +208,12 @@ export default function StaffManager() {
                                 ) : staffMembers.length === 0 ? (
                                     <tr>
                                         <td colSpan={4} className="px-6 py-16 text-center">
-                                        <div className="flex flex-col items-center gap-3">
-                                            <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center border border-gray-200">
-                                                <Users className="h-8 w-8 text-gray-400" />
+                                            <div className="flex flex-col items-center gap-3">
+                                                <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center border border-gray-200">
+                                                    <Users className="h-8 w-8 text-gray-400" />
+                                                </div>
+                                                <p className="text-gray-500 text-sm font-medium">직원이 없습니다.</p>
                                             </div>
-                                            <p className="text-gray-500 text-sm font-medium">직원이 없습니다.</p>
-                                        </div>
                                         </td>
                                     </tr>
                                 ) : (
@@ -226,11 +226,10 @@ export default function StaffManager() {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
-                                                <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${
-                                                    staff.role === 'admin' 
+                                                <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${staff.role === 'admin'
                                                         ? 'bg-purple-50 text-purple-700 border-purple-200'
                                                         : 'bg-blue-50 text-blue-700 border-blue-200'
-                                                }`}>
+                                                    }`}>
                                                     {staff.role === 'admin' ? '관리자' : '직원'}
                                                 </span>
                                             </td>
