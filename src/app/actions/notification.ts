@@ -234,22 +234,28 @@ async function sendSolapiMessage(
         .update(date + salt)
         .digest('hex')
 
+    const requestBody = {
+        message: {
+            to: message.to,
+            type: 'ATA', // 알림톡
+            kakaoOptions: message.kakaoOptions
+        }
+    }
+
+    console.log('[Solapi Debug] Request body:', JSON.stringify(requestBody, null, 2))
+
     const response = await fetch('https://api.solapi.com/messages/v4/send', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `hmac-sha256 apiKey=${apiKey}, date=${date}, salt=${salt}, signature=${signature}`
         },
-        body: JSON.stringify({
-            message: {
-                ...message,
-                type: 'ATA' // 알림톡
-            }
-        })
+        body: JSON.stringify(requestBody)
     })
 
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
+        console.error('[Solapi Debug] Error response:', errorData)
         throw new Error(`Solapi API 호출 실패: ${response.status} - ${JSON.stringify(errorData)}`)
     }
 
