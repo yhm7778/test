@@ -67,11 +67,12 @@ export async function submitApplication(data: {
     const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString()
     const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999)).toISOString()
 
-    // Count
+    // Count applications for this specific solution type
     const { count, error: countError } = await db
         .from('applications')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', userId)
+        .eq('marketing_type', data.marketingType || 'etc')  // 솔루션별 카운트
         .gte('created_at', start)
         .lte('created_at', end)
 
@@ -91,7 +92,21 @@ export async function submitApplication(data: {
     const currentCount = count || 0
 
     if (currentCount >= limit) {
-        return { error: `이번 달 신청 가능 횟수(${limit}회)를 초과했습니다. (현재 ${currentCount}/${limit}회)` }
+        const solutionNames: Record<string, string> = {
+            'blog-reporter': '블로그 기자단',
+            'blog_reporter': '블로그 기자단',
+            'blog-experience': '블로그 체험단',
+            'blog_experience': '블로그 체험단',
+            'instagram-popular': '인스타그램 인기게시물',
+            'instagram_popular': '인스타그램 인기게시물',
+            'seo-optimization': 'SEO 최적화작업',
+            'seo_optimization': 'SEO 최적화작업',
+            'photo-shooting': '사진촬영',
+            'photo_shooting': '사진촬영',
+            'etc': '기타'
+        }
+        const solutionName = solutionNames[data.marketingType || ''] || data.marketingType
+        return { error: `${solutionName} 이번 달 신청 가능 횟수(${limit}회)를 초과했습니다. (현재 ${currentCount}/${limit}회)` }
     }
 
     // 4. Insert
