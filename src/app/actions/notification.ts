@@ -151,8 +151,9 @@ export async function sendWelcomeNotification(params: {
 }
 
 /**
- * 신청서 완료 처리 알림톡 발송
- * 공통 완료 알림 (T2tWDqfbQm) - #{SolutionName1}
+ * 신청서 완료 처리 알림톡 발송/**
+ * 관리자 완료 처리 시 알림톡 발송
+ * 항상 APPLICATION_COMPLETED 템플릿 사용
  */
 export async function sendApplicationCompletedNotification(params: {
     recipientPhone: string
@@ -163,28 +164,11 @@ export async function sendApplicationCompletedNotification(params: {
         const apiKey = process.env.SOLAPI_API_KEY
         const apiSecret = process.env.SOLAPI_API_SECRET
         const pfId = process.env.SOLAPI_KAKAO_CHANNEL_ID
+        const templateId = process.env.SOLAPI_TEMPLATE_APPLICATION_COMPLETED
 
-        if (!apiKey || !apiSecret || !pfId) {
+        if (!apiKey || !apiSecret || !pfId || !templateId) {
             console.warn('Solapi 설정이 완료되지 않았습니다.')
             return { success: true, message: '알림톡 설정 대기 중' }
-        }
-
-        // 신청 타입별 템플릿 ID 매핑
-        const templateIdMap: Record<string, string | undefined> = {
-            'blog-reporter': process.env.SOLAPI_TEMPLATE_BLOG_REPORTER_COMPLETED,
-            'blog_reporter': process.env.SOLAPI_TEMPLATE_BLOG_REPORTER_COMPLETED,
-            'blog-experience': process.env.SOLAPI_TEMPLATE_BLOG_EXPERIENCE_COMPLETED,
-            'blog_experience': process.env.SOLAPI_TEMPLATE_BLOG_EXPERIENCE_COMPLETED,
-            'instagram-popular': process.env.SOLAPI_TEMPLATE_INSTAGRAM_COMPLETED,
-            'instagram_popular': process.env.SOLAPI_TEMPLATE_INSTAGRAM_COMPLETED,
-        }
-
-        // 타입별 템플릿 ID 또는 기본 완료 템플릿 ID 사용
-        const templateId = templateIdMap[params.applicationType] || process.env.SOLAPI_TEMPLATE_APPLICATION_COMPLETED
-
-        if (!templateId) {
-            console.warn('템플릿 ID가 설정되지 않았습니다.')
-            return { success: true, message: '템플릿 설정 대기 중' }
         }
 
         const formattedPhone = params.recipientPhone.replace(/[^0-9]/g, '')
@@ -204,14 +188,9 @@ export async function sendApplicationCompletedNotification(params: {
             'etc': '기타',
         }
 
-        // 템플릿 변수 설정
+        // 관리자 완료 처리 알림톡은 항상 SolutionName1 변수만 사용
         const variables: Record<string, string> = {
             SolutionName1: solutionNameMap[params.applicationType] || params.applicationType
-        }
-
-        // 블로그 기자단의 경우 Quantity1 변수 추가
-        if ((params.applicationType === 'blog-reporter' || params.applicationType === 'blog_reporter') && params.blogCount) {
-            variables.Quantity1 = params.blogCount.toString()
         }
 
         const message: SolapiKakaoMessage = {
@@ -224,7 +203,7 @@ export async function sendApplicationCompletedNotification(params: {
         }
 
         await sendSolapiMessage(message, apiKey, apiSecret)
-        console.log('완료 알림톡 발송 성공:', solutionNameMap[params.applicationType])
+        console.log('관리자 완료 알림톡 발송 성공:', solutionNameMap[params.applicationType])
 
         return { success: true, message: '알림톡이 발송되었습니다.' }
     } catch (error) {

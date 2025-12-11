@@ -104,6 +104,16 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
     // Status Toggle
     const handleStatusToggle = async (app: Application) => {
         const newStatus = app.status === 'completed' ? 'pending' : 'completed'
+
+        // Confirmation dialog
+        const confirmMessage = newStatus === 'completed'
+            ? '이 신청서를 완료 처리하시겠습니까?\n완료 처리 시 고객에게 알림톡이 발송됩니다.'
+            : '이 신청서를 미완료 처리하시겠습니까?'
+
+        if (!window.confirm(confirmMessage)) {
+            return
+        }
+
         const updates: ApplicationUpdate = { status: newStatus }
 
         if (newStatus === 'completed') {
@@ -148,6 +158,8 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
             })
 
             alert('상태가 완료로 변경되었습니다. (카카오톡 알림 발송 중)')
+        } else {
+            alert('상태가 미완료로 변경되었습니다.')
         }
 
         setApplications(prev => prev.map(p =>
