@@ -69,7 +69,7 @@ export async function sendApplicationSubmittedNotification(params: {
             case 'blog-reporter':
                 templateId = process.env.SOLAPI_TEMPLATE_BLOG_REPORTER_COMPLETED
                 if (params.blogCount) {
-                    variables.Quantity1 = params.blogCount.toString()
+                    variables['#{Quantity1}'] = params.blogCount.toString()
                 }
                 break
             case 'blog_experience':
@@ -135,7 +135,7 @@ export async function sendWelcomeNotification(params: {
                 pfId,
                 templateId,
                 variables: {
-                    name1: params.username
+                    '#{name1}': params.username
                 }
             }
         }
@@ -190,7 +190,7 @@ export async function sendApplicationCompletedNotification(params: {
 
         // 관리자 완료 처리 알림톡은 항상 SolutionName1 변수만 사용
         const variables: Record<string, string> = {
-            SolutionName1: solutionNameMap[params.applicationType] || params.applicationType
+            '#{SolutionName1}': solutionNameMap[params.applicationType] || params.applicationType
         }
 
         console.log('[Notification Debug] Template ID:', templateId)
