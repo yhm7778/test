@@ -231,7 +231,10 @@ export default function PhotoUpload({ photos, setPhotos, initialUrls = [], readO
                             클릭하여 업로드하거나 이미지를 드래그하세요
                         </p>
                         <p className="text-xs text-gray-500">
-                            이미지·동영상 파일을 업로드할 수 있으며, 파일당 최대 1GB까지 지원합니다.
+                            {photosOnly
+                                ? '이미지 파일을 업로드할 수 있으며, 파일당 최대 1GB까지 지원합니다.'
+                                : '이미지·동영상 파일을 업로드할 수 있으며, 파일당 최대 1GB까지 지원합니다.'
+                            }
                         </p>
                     </div>
                 </div>

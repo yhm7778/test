@@ -558,8 +558,8 @@ ${specialNotes}`
                     />
                 </div>
 
-                {/* 발행할 블로그 리뷰 갯수 - 인스타 인기게시물 제외 */}
-                {!isSimpleForm && type !== 'instagram-popular' && (
+                {/* 발행할 블로그 리뷰 갯수 - 인스타 인기게시물, 체험단 제외 */}
+                {!isSimpleForm && type !== 'instagram-popular' && type !== 'blog-experience' && (
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1.5">
                             ■ 발행 할 블로그 리뷰 갯수 (N개) <span className="text-red-500">*</span>
@@ -610,7 +610,7 @@ ${specialNotes}`
                         ) : (
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                                    ■ {type === 'instagram-popular' ? '3~9장 첨부해주세요' : '업로드 할 사진/동영상'} <span className="text-red-500">*</span>
+                                    ■ {type === 'instagram-popular' ? '3~9장 첨부해주세요. 동영상 첨부불가' : '업로드 할 사진/동영상'} <span className="text-red-500">*</span>
                                 </label>
                                 <PhotoUpload
                                     photos={photos}
