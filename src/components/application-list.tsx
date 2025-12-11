@@ -9,6 +9,7 @@ import { Download, Search, Trash2, X, Eye, CheckSquare, Square, Loader2 } from '
 import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 import ApplicationForm from './application-form'
+import CompletionModal from './completion-modal'
 
 type Application = Database['public']['Tables']['applications']['Row']
 type ApplicationUpdate = Database['public']['Tables']['applications']['Update']
@@ -25,6 +26,7 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
     const [endDate, setEndDate] = useState('')
     const [selectedIds, setSelectedIds] = useState<string[]>([])
     const [viewingApp, setViewingApp] = useState<Application | null>(null)
+    const [completingApp, setCompletingApp] = useState<Application | null>(null)
     const [isDownloading, setIsDownloading] = useState(false)
     const [isDeleting, setIsDeleting] = useState(false)
 
@@ -105,21 +107,22 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
     const handleStatusToggle = async (app: Application) => {
         const newStatus = app.status === 'completed' ? 'pending' : 'completed'
 
-        // Confirmation dialog
-        const confirmMessage = newStatus === 'completed'
-            ? '이 신청서를 완료 처리하시겠습니까?\n완료 처리 시 고객에게 알림톡이 발송됩니다.'
-            : '이 신청서를 미완료 처리하시겠습니까?'
+        // If completing, open modal instead
+        if (newStatus === 'completed') {
+            setCompletingApp(app)
+            return
+        }
+
+        // Uncompleting - direct update
+        const confirmMessage = '이 신청서를 미완료 처리하시겠습니까?'
 
         if (!window.confirm(confirmMessage)) {
             return
         }
 
-        const updates: ApplicationUpdate = { status: newStatus }
-
-        if (newStatus === 'completed') {
-            updates.completion_date = new Date().toISOString()
-        } else {
-            updates.completion_date = null
+        const updates: ApplicationUpdate = {
+            status: newStatus,
+            completion_date: null
         }
 
         const { data, error } = await supabase
@@ -140,27 +143,7 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
             return
         }
 
-        if (newStatus === 'completed') {
-            // Send notification via API
-            console.log(`[Kakao Notification] Sending completion notification to user ${app.user_id} for application ${app.id}`)
-
-            // Call API to send notification (non-blocking)
-            fetch('/api/notifications/send-completion', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    applicationId: app.id,
-                    userId: app.user_id,
-                    marketingType: app.marketing_type
-                })
-            }).catch(err => {
-                console.error('Notification API call failed:', err)
-            })
-
-            alert('상태가 완료로 변경되었습니다. (카카오톡 알림 발송 중)')
-        } else {
-            alert('상태가 미완료로 변경되었습니다.')
-        }
+        alert('상태가 미완료로 변경되었습니다.')
 
         setApplications(prev => prev.map(p =>
             p.id === app.id ? { ...p, ...updates } : p
@@ -168,6 +151,83 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
 
         // Refresh server data
         refreshData()
+    }
+
+    // Handle Completion with BEFORE/AFTER
+    const handleComplete = async (afterContent: string, afterMediaFiles: File[]) => {
+        if (!completingApp) return
+
+        try {
+            // 1. Upload media files to Supabase Storage
+            const afterMediaUrls: string[] = []
+
+            for (const file of afterMediaFiles) {
+                const fileExt = file.name.split('.').pop()
+                const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
+                const filePath = `after/${completingApp.id}/${fileName}`
+
+                const { data, error: uploadError } = await supabase.storage
+                    .from('applications')
+                    .upload(filePath, file, {
+                        cacheControl: '3600',
+                        upsert: false
+                    })
+
+                if (uploadError) throw uploadError
+
+                const { data: { publicUrl } } = supabase.storage
+                    .from('applications')
+                    .getPublicUrl(data.path)
+
+                afterMediaUrls.push(publicUrl)
+            }
+
+            // 2. Update application with AFTER data and completion status
+            const updates: ApplicationUpdate = {
+                status: 'completed',
+                completion_date: new Date().toISOString(),
+                after_content: afterContent,
+                after_media_urls: afterMediaUrls
+            }
+
+            const { data, error } = await supabase
+                .from('applications')
+                .update(updates)
+                .eq('id', completingApp.id)
+                .select()
+
+            if (error) throw error
+
+            if (!data || data.length === 0) {
+                throw new Error('완료 처리에 실패했습니다.')
+            }
+
+            // 3. Send notification via API
+            console.log(`[Kakao Notification] Sending completion notification to user ${completingApp.user_id}`)
+
+            fetch('/api/notifications/send-completion', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    applicationId: completingApp.id,
+                    userId: completingApp.user_id,
+                    marketingType: completingApp.marketing_type
+                })
+            }).catch(err => {
+                console.error('Notification API call failed:', err)
+            })
+
+            // 4. Update local state
+            setApplications(prev => prev.map(p =>
+                p.id === completingApp.id ? { ...p, ...updates } : p
+            ))
+
+            alert('완료 처리되었습니다. (카카오톡 알림 발송 중)')
+            refreshData()
+        } catch (error) {
+            console.error('Completion error:', error)
+            throw error
+        }
     }
 
     // Bulk Status Update
@@ -609,6 +669,17 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Completion Modal */}
+            {completingApp && (
+                <CompletionModal
+                    applicationId={completingApp.id}
+                    storeName={completingApp.store_name}
+                    marketingType={completingApp.marketing_type || 'etc'}
+                    onClose={() => setCompletingApp(null)}
+                    onComplete={handleComplete}
+                />
             )}
         </div>
     )
