@@ -53,10 +53,25 @@ export async function POST(request: NextRequest) {
             )
         }
 
+        // Get application data to extract blog count
+        const { data: application } = await supabase
+            .from('applications')
+            .select('notes')
+            .eq('id', applicationId)
+            .single()
+
+        // Extract blog count from notes if blog-reporter type
+        let blogCount: number | undefined
+        if ((marketingType === 'blog-reporter' || marketingType === 'blog_reporter') && application?.notes) {
+            const match = application.notes.match(/블로그 리뷰 갯수:\s*(\d+)개/)
+            blogCount = match ? parseInt(match[1]) : undefined
+        }
+
         // Send notification
         await sendApplicationCompletedNotification({
             recipientPhone: userProfile.phone,
-            applicationType: marketingType || 'etc'
+            applicationType: marketingType || 'etc',
+            blogCount
         })
 
         return NextResponse.json({ success: true })

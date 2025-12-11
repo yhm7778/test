@@ -157,6 +157,7 @@ export async function sendWelcomeNotification(params: {
 export async function sendApplicationCompletedNotification(params: {
     recipientPhone: string
     applicationType: string
+    blogCount?: number
 }) {
     try {
         const apiKey = process.env.SOLAPI_API_KEY
@@ -203,14 +204,22 @@ export async function sendApplicationCompletedNotification(params: {
             'etc': '기타',
         }
 
+        // 템플릿 변수 설정
+        const variables: Record<string, string> = {
+            SolutionName1: solutionNameMap[params.applicationType] || params.applicationType
+        }
+
+        // 블로그 기자단의 경우 Quantity1 변수 추가
+        if ((params.applicationType === 'blog-reporter' || params.applicationType === 'blog_reporter') && params.blogCount) {
+            variables.Quantity1 = params.blogCount.toString()
+        }
+
         const message: SolapiKakaoMessage = {
             to: formattedPhone,
             kakaoOptions: {
                 pfId,
                 templateId,
-                variables: {
-                    SolutionName1: solutionNameMap[params.applicationType] || params.applicationType
-                }
+                variables
             }
         }
 
