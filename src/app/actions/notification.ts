@@ -193,6 +193,10 @@ export async function sendApplicationCompletedNotification(params: {
             SolutionName1: solutionNameMap[params.applicationType] || params.applicationType
         }
 
+        console.log('[Notification Debug] Template ID:', templateId)
+        console.log('[Notification Debug] Variables:', variables)
+        console.log('[Notification Debug] Application Type:', params.applicationType)
+
         const message: SolapiKakaoMessage = {
             to: formattedPhone,
             kakaoOptions: {
