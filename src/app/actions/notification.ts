@@ -215,13 +215,21 @@ async function sendSolapiMessage(
     apiKey: string,
     apiSecret: string
 ) {
-    const credentials = Buffer.from(`${apiKey}:${apiSecret}`).toString('base64')
+    const crypto = require('crypto')
+
+    // HMAC-SHA256 인증 생성
+    const date = new Date().toISOString()
+    const salt = Math.random().toString(36).substring(2, 15)
+    const signature = crypto
+        .createHmac('sha256', apiSecret)
+        .update(date + salt)
+        .digest('hex')
 
     const response = await fetch('https://api.solapi.com/messages/v4/send', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Basic ${credentials}`
+            'Authorization': `hmac-sha256 apiKey=${apiKey}, date=${date}, salt=${salt}, signature=${signature}`
         },
         body: JSON.stringify({
             message: {
