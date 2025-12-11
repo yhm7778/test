@@ -285,7 +285,6 @@ export default function ApplicationForm({ initialData, readOnly = false, type, t
             let finalTags = !isSimpleForm ? contentKeywords.split(',').map(k => sanitizeHtml(k.trim())).filter(k => k) : []
 
             if (type === 'blog-reporter') {
-                if (!placeUrl.trim()) throw new Error('업장 플레이스 URL을 입력해주세요.')
                 if (appealPoints.some(p => !p.trim())) throw new Error('업체 장점 3가지를 모두 입력해주세요.')
                 if (!contentKeywords.trim()) throw new Error('태그키워드를 입력해주세요.')
 
@@ -303,14 +302,12 @@ export default function ApplicationForm({ initialData, readOnly = false, type, t
 ■ 태그키워드 : 
 ${contentKeywords}
 
-■ 업장 플레이스 URL : ${placeUrl}
-
-■ 추가적으로 사진 최소 5장 ~최대 10장 보내주기.
-
 □ 그 외 특이사항 : 
 ${specialNotes}`
             } else if (type === 'instagram-popular') {
                 if (appealPoints.some(p => !p.trim())) throw new Error('업체 장점 3가지를 모두 입력해주세요.')
+                if (photos.length < 3) throw new Error('사진을 최소 3장 이상 업로드해주세요.')
+                if (photos.length > 9) throw new Error('사진은 최대 9장까지만 업로드 가능합니다.')
 
                 finalAdvantages = `- 인스타 가이드라인 양식 -
 
@@ -320,8 +317,6 @@ ${specialNotes}`
 1) ${appealPoints[0]}
 2) ${appealPoints[1]}
 3) ${appealPoints[2]}
-
-■ 추가적으로 사진 최대 5장 보내주기.
 
 □ 그 외 특이사항 : 
 ${specialNotes}`
