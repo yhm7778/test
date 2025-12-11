@@ -45,7 +45,7 @@ export default function LandingButtons({ initialCustomMenus = [] }: { initialCus
             label: '블로그 기자단 포스팅',
             href: '/apply?type=blog-reporter',
             icon: FileText,
-            desc: '전문 기자가 작성하는 고품질 리뷰'
+            desc: '블로그 게시글 수 증가에 효과적인 리뷰 서비스'
         },
         {
             label: '블로그 체험단 포스팅',
