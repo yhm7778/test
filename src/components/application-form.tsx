@@ -8,7 +8,7 @@ import { sanitizeHtml, validateFile, sanitizeFilename } from '@/lib/security'
 import { Loader2 } from 'lucide-react'
 
 import { Database } from '@/types/supabase'
-import { submitApplication } from '@/app/actions/application'
+import { submitApplication, getLastApplication } from '@/app/actions/application'
 
 interface ApplicationFormProps {
     initialData?: Database['public']['Tables']['applications']['Row']
@@ -144,6 +144,90 @@ export default function ApplicationForm({ initialData, readOnly = false, type, t
     }
 
 
+
+    // Load Previous Application Logic
+    const handleLoadPrevious = async () => {
+        if (!type) return
+
+        const confirmLoad = window.confirm('이전 신청 내역을 불러오시겠습니까? 현재 입력된 내용은 사라집니다.')
+        if (!confirmLoad) return
+
+        setIsSubmitting(true) // Reuse submitting state for loading indicator
+        try {
+            const result = await getLastApplication(type)
+
+            if (result.error) {
+                alert(result.error)
+                return
+            }
+
+            const data = result.data
+
+            if (!data) {
+                alert('이전 신청 내역이 없습니다.')
+                return
+            }
+
+            // TypeScript type narrowing - data is guaranteed to be non-null here
+            // Common Fields
+            setStoreName(data.store_name || '')
+            if (data.keywords && data.keywords.length >= 1) setKeyword1(data.keywords[0])
+            if (data.keywords && data.keywords.length >= 2) setKeyword2(data.keywords[1])
+            if (data.tags) setContentKeywords(data.tags.join(', '))
+
+            // Parse formatted string (advantages)
+            const text = data.advantages || ''
+
+            if (type === 'blog-reporter' || type === 'instagram-popular') {
+                // Parse Appeal Points (1), 2), 3))
+                const points = ['', '', '']
+                const p1Match = text.match(/1\) (.*)/)
+                const p2Match = text.match(/2\) (.*)/)
+                const p3Match = text.match(/3\) (.*)/)
+
+                if (p1Match) points[0] = p1Match[1].trim()
+                if (p2Match) points[1] = p2Match[1].trim()
+                if (p3Match) points[2] = p3Match[1].trim()
+                setAppealPoints(points)
+
+                // Parse Place URL (Blog Reporter only)
+                if (type === 'blog-reporter') {
+                    const urlMatch = text.match(/■ 업장 플레이스 URL : (.*)/)
+                    if (urlMatch) setPlaceUrl(urlMatch[1].trim())
+                }
+
+                // Parse Special Notes
+                // Match either filled or empty square bullet
+                const notesMatch = text.match(/[■□] 그 외 특이사항 :([\s\S]*?)$/)
+                if (notesMatch) setSpecialNotes(notesMatch[1].trim())
+            } else if (type === 'blog-experience') {
+                // Parse Experience Fields
+                const serviceMatch = text.match(/제공서비스 : ★(.*)/)
+                const priceMatch = text.match(/체험 단가\s*: ★(.*)/)
+                const countMatch = text.match(/체험인원 : (.*)/)
+                const dateMatch = text.match(/방문가능일자 : ★(.*)/)
+                const timeMatch = text.match(/방문가능시간 : ★(.*)/)
+                const requestMatch = text.match(/추가 요청사항 : ★(.*)/)
+                const contactMatch = text.match(/일정조율연락처 : ★(.*)/)
+
+                if (serviceMatch) setProvidedService(serviceMatch[1].trim())
+                if (priceMatch) setExperiencePrice(priceMatch[1].trim())
+                if (countMatch) setExperienceCount(countMatch[1].trim() === '-' ? '' : countMatch[1].trim())
+                if (dateMatch) setVisitDate(dateMatch[1].trim())
+                if (timeMatch) setVisitTime(timeMatch[1].trim())
+                if (requestMatch) setAdditionalRequest(requestMatch[1].trim())
+                if (contactMatch) setContact(contactMatch[1].trim())
+            }
+
+            alert('이전 신청 내역을 불러왔습니다.')
+
+        } catch (e) {
+            console.error(e)
+            alert('데이터를 불러오는 중 오류가 발생했습니다.')
+        } finally {
+            setIsSubmitting(false)
+        }
+    }
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault()
@@ -417,9 +501,22 @@ ${specialNotes}`
     return (
         <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
             <div className="card space-y-6">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">{getTitle(type)}</h1>
-                    <p className="text-gray-500 mt-2">{getDescription(type)}</p>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-900">{getTitle(type)}</h1>
+                        <p className="text-gray-500 mt-2">{getDescription(type)}</p>
+                    </div>
+                    {!readOnly && !isSimpleForm && (
+                        <button
+                            type="button"
+                            onClick={handleLoadPrevious}
+                            disabled={isSubmitting}
+                            className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                        >
+                            {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                            이전 양식 불러오기
+                        </button>
+                    )}
                 </div>
 
                 {error && (
@@ -506,9 +603,16 @@ ${specialNotes}`
                                     readOnly={readOnly}
                                 />
                                 {!readOnly && blogCount && !isNaN(Number(blogCount)) && Number(blogCount) > 0 && (
-                                    <p className="mt-2 text-sm font-medium text-red-600 bg-red-50 p-3 rounded-md border border-red-100">
-                                        * 블로그 1건당 최소 5장의 사진이 필요합니다. (신청하신 {blogCount}건 발행을 위해 최소 {Number(blogCount) * 5}장의 사진이 필요합니다)
-                                    </p>
+                                    <>
+                                        <p className="mt-2 text-sm font-medium text-red-600 bg-red-50 p-3 rounded-md border border-red-100">
+                                            * 블로그 1건당 최소 5장의 사진이 필요합니다. (신청하신 {blogCount}건 발행을 위해 최소 {Number(blogCount) * 5}장의 사진이 필요합니다)
+                                        </p>
+                                        {Number(blogCount) > 1 && (
+                                            <p className="mt-2 text-sm text-blue-600 bg-blue-50 p-3 rounded-md border border-blue-100">
+                                                ℹ️ 블로그 여러 건 발행 시 사진은 랜덤으로 나눠집니다.
+                                            </p>
+                                        )}
+                                    </>
                                 )}
                             </div>
                         )}

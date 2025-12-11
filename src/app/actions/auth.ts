@@ -49,7 +49,7 @@ export async function signIn(username: string, password: string) {
     return { success: true }
 }
 
-export async function signUp(username: string, password: string) {
+export async function signUp(username: string, password: string, phone: string) {
     const supabase = await createClient()
     const adminClient = getAdminClient()
 
@@ -59,7 +59,7 @@ export async function signUp(username: string, password: string) {
         .select('id')
         .eq('username', username)
         .single()
-    
+
     if (existingUser) {
         return { error: '이미 존재하는 아이디입니다.' }
     }
@@ -74,6 +74,7 @@ export async function signUp(username: string, password: string) {
         options: {
             data: {
                 username,
+                phone,
                 role: 'client'
             }
         }
@@ -87,7 +88,7 @@ export async function signUp(username: string, password: string) {
         return { error: '회원가입 실패 (User creation failed)' }
     }
 
-    // 4. Profiles 테이블에 username 저장
+    // 4. Profiles 테이블에 username과 phone 저장
     // 트리거가 있을 수 있지만 안전을 위해 명시적으로 업데이트
     const { error: updateError } = await adminClient
         .from('profiles')
@@ -95,9 +96,10 @@ export async function signUp(username: string, password: string) {
             id: data.user.id,
             email: email,
             username: username,
+            phone: phone,
             role: 'client'
         })
-    
+
     if (updateError) {
         console.error('Profile update error:', updateError)
     }
@@ -107,13 +109,13 @@ export async function signUp(username: string, password: string) {
 
 export async function signOut() {
     const supabase = await createClient()
-    
+
     // Sign out from Supabase - this will clear server-side cookies
     const { error } = await supabase.auth.signOut()
-    
+
     if (error) {
         return { error: error.message }
     }
-    
+
     return { success: true }
 }

@@ -127,6 +127,7 @@ export default function RankCheckPage() {
                                     <div className="mt-2 text-sm text-blue-700">
                                         <ul role="list" className="list-disc pl-5 space-y-1">
                                             <li>실시간 브라우저 조회로 검색 깊이에 따라 시간이 소요될 수 있습니다. (최대 1~2분 소요 예정)</li>
+                                            <li>순위는 트래픽 과부화 방지 등을 위하여 100위까지 실시간으로 체크가 가능합니다.</li>
                                         </ul>
                                     </div>
                                 </div>

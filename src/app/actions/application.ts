@@ -116,3 +116,37 @@ export async function submitApplication(data: {
 
     return { success: true }
 }
+
+export async function getLastApplication(marketingType: string): Promise<{
+    data: Database['public']['Tables']['applications']['Row'] | null
+    error: string | null
+}> {
+    const supabase = await createClient()
+
+    // 1. Authenticate
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+        return { data: null, error: '로그인이 필요합니다.' }
+    }
+
+    // 2. Fetch Last Application
+    const { data, error } = await supabase
+        .from('applications')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('marketing_type', marketingType.replace(/-/g, '_'))
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+
+    if (error) {
+        if (error.code === 'PGRST116') {
+            return { data: null, error: '이전 신청 내역이 없습니다.' }
+        }
+        console.error('Error fetching last application:', error)
+        return { data: null, error: '이전 신청 내역을 불러오는 중 오류가 발생했습니다.' }
+    }
+
+    return { data: data as Database['public']['Tables']['applications']['Row'], error: null }
+}
+

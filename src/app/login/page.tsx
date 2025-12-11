@@ -10,6 +10,7 @@ import { signIn, signUp } from '@/app/actions/auth'
 export default function LoginPage() {
     const [username, setUsername] = useState('')
     const [password, setPassword] = useState('')
+    const [phone, setPhone] = useState('')
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const router = useRouter()
@@ -62,7 +63,13 @@ export default function LoginPage() {
         setError(null)
 
         try {
-            const result = await signUp(username, password)
+            // 전화번호 유효성 검사
+            const phoneRegex = /^01[0-9]-?[0-9]{3,4}-?[0-9]{4}$/
+            if (!phoneRegex.test(phone.replace(/-/g, ''))) {
+                throw new Error('올바른 전화번호 형식이 아닙니다. (예: 010-1234-5678)')
+            }
+
+            const result = await signUp(username, password, phone)
             if (result.error) throw new Error(result.error)
 
             alert('회원가입이 완료되었습니다.')
@@ -121,6 +128,24 @@ export default function LoginPage() {
                                 className="input-field"
                                 placeholder="••••••••"
                             />
+                        </div>
+
+                        <div>
+                            <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+                                전화번호
+                            </label>
+                            <input
+                                id="phone"
+                                name="phone"
+                                type="tel"
+                                autoComplete="tel"
+                                required
+                                value={phone}
+                                onChange={(e) => setPhone(e.target.value)}
+                                className="input-field"
+                                placeholder="010-1234-5678"
+                            />
+                            <p className="mt-1 text-xs text-gray-500">알림톡 수신용 전화번호를 입력해주세요.</p>
                         </div>
                     </div>
 
