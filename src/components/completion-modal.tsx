@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { X, Loader2 } from 'lucide-react'
 import BeforeAfterUpload from './before-after-upload'
 import MediaViewer from './media-viewer'
@@ -31,6 +31,14 @@ export default function CompletionModal({
     const [viewerIndex, setViewerIndex] = useState(0)
     const [viewerUrls, setViewerUrls] = useState<string[]>([])
     const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0, percent: 0 })
+    const progressBarRef = useRef<HTMLDivElement>(null)
+
+    // Update progress bar width via ref to avoid inline style lint warning
+    useEffect(() => {
+        if (progressBarRef.current) {
+            progressBarRef.current.style.width = `${uploadProgress.percent}%`
+        }
+    }, [uploadProgress.percent])
 
     const handleBeforeMediaAdd = (files: File[]) => {
         const newFiles = [...beforeMediaFiles, ...files]
@@ -101,12 +109,12 @@ export default function CompletionModal({
 
     return (
         <>
-            <div className="fixed inset-0 z-40 bg-black/50" onClick={onClose} />
-            <div className="fixed inset-0 z-50 overflow-y-auto">
-                <div className="flex min-h-full items-center justify-center p-4">
-                    <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm" onClick={onClose} />
+            <div className="fixed inset-0 z-50 overflow-y-auto pointer-events-none">
+                <div className="flex min-h-full items-center justify-center p-4 pointer-events-auto">
+                    <div className="relative bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
                         {/* Header */}
-                        <div className="sticky top-0 bg-gray-50 border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+                        <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between shadow-sm">
                             <div>
                                 <h2 className="text-lg font-semibold text-gray-900">완료 처리</h2>
                                 <p className="text-sm text-gray-600 mt-1">{storeName}</p>
@@ -184,10 +192,9 @@ export default function CompletionModal({
                                         </span>
                                     </div>
                                     <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
-                                        {/* eslint-disable-next-line react/forbid-dom-props */}
                                         <div
+                                            ref={progressBarRef}
                                             className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
-                                            style={{ width: `${uploadProgress.percent}%` }}
                                         />
                                     </div>
                                 </div>

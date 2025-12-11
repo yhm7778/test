@@ -152,15 +152,20 @@ export default function BeforeAfterUpload({
                             <div key={url} className="relative group aspect-square">
                                 {isVideo(url) ? (
                                     <div
-                                        className="relative w-full h-full bg-gray-900 rounded-lg overflow-hidden cursor-pointer"
+                                        className="relative w-full h-full bg-black rounded-lg overflow-hidden cursor-pointer"
                                         onClick={() => onMediaClick?.(index)}
                                     >
                                         <video
-                                            src={url}
-                                            className="w-full h-full object-cover"
+                                            src={`${url}#t=0.1`}
+                                            className="w-full h-full object-cover opacity-80"
+                                            muted
+                                            preload="metadata"
+                                            playsInline
                                         />
-                                        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                                            <Video className="w-12 h-12 text-white" />
+                                        <div className="absolute inset-0 flex items-center justify-center">
+                                            <div className="bg-black/40 rounded-full p-2 backdrop-blur-sm">
+                                                <Video className="w-8 h-8 text-white" />
+                                            </div>
                                         </div>
                                     </div>
                                 ) : (
