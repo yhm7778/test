@@ -154,10 +154,19 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
     }
 
     // Handle Completion with BEFORE/AFTER
-    const handleComplete = async (beforeContent: string, beforeMediaFiles: File[], afterContent: string, afterMediaFiles: File[]) => {
+    const handleComplete = async (
+        beforeContent: string,
+        beforeMediaFiles: File[],
+        afterContent: string,
+        afterMediaFiles: File[],
+        onProgress?: (current: number, total: number) => void
+    ) => {
         if (!completingApp) return
 
         try {
+            const totalFiles = beforeMediaFiles.length + afterMediaFiles.length
+            let uploadedCount = 0
+
             // 1. Upload BEFORE media files to Supabase Storage
             const beforeMediaUrls: string[] = []
 
@@ -180,6 +189,10 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
                     .getPublicUrl(data.path)
 
                 beforeMediaUrls.push(publicUrl)
+
+                // Update progress
+                uploadedCount++
+                onProgress?.(uploadedCount, totalFiles)
             }
 
             // 2. Upload AFTER media files to Supabase Storage
@@ -204,6 +217,10 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
                     .getPublicUrl(data.path)
 
                 afterMediaUrls.push(publicUrl)
+
+                // Update progress
+                uploadedCount++
+                onProgress?.(uploadedCount, totalFiles)
             }
 
             // 3. Update application with BEFORE/AFTER data and completion status

@@ -10,7 +10,7 @@ interface CompletionModalProps {
     storeName: string
     marketingType: string
     onClose: () => void
-    onComplete: (beforeContent: string, beforeMediaFiles: File[], afterContent: string, afterMediaFiles: File[]) => Promise<void>
+    onComplete: (beforeContent: string, beforeMediaFiles: File[], afterContent: string, afterMediaFiles: File[], onProgress?: (current: number, total: number) => void) => Promise<void>
 }
 
 export default function CompletionModal({
@@ -30,6 +30,7 @@ export default function CompletionModal({
     const [viewerOpen, setViewerOpen] = useState(false)
     const [viewerIndex, setViewerIndex] = useState(0)
     const [viewerUrls, setViewerUrls] = useState<string[]>([])
+    const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0, percent: 0 })
 
     const handleBeforeMediaAdd = (files: File[]) => {
         const newFiles = [...beforeMediaFiles, ...files]
@@ -80,8 +81,12 @@ export default function CompletionModal({
         }
 
         setSubmitting(true)
+        setUploadProgress({ current: 0, total: beforeMediaFiles.length + afterMediaFiles.length, percent: 0 })
         try {
-            await onComplete(beforeContent, beforeMediaFiles, afterContent, afterMediaFiles)
+            await onComplete(beforeContent, beforeMediaFiles, afterContent, afterMediaFiles, (current, total) => {
+                const percent = Math.round((current / total) * 100)
+                setUploadProgress({ current, total, percent })
+            })
             // Cleanup preview URLs
             beforeMediaPreviews.forEach(url => URL.revokeObjectURL(url))
             afterMediaPreviews.forEach(url => URL.revokeObjectURL(url))
@@ -117,23 +122,37 @@ export default function CompletionModal({
                         </div>
 
                         {/* Content */}
-                        <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)] space-y-8">
-                            <BeforeAfterUpload
-                                type="before"
-                                content={beforeContent}
-                                mediaUrls={beforeMediaPreviews}
-                                onContentChange={setBeforeContent}
-                                onMediaAdd={handleBeforeMediaAdd}
-                                onMediaRemove={handleBeforeMediaRemove}
-                                onMediaClick={(index) => {
-                                    setViewerUrls(beforeMediaPreviews)
-                                    setViewerIndex(index)
-                                    setViewerOpen(true)
-                                }}
-                                uploading={submitting}
-                            />
+                        <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)] space-y-6">
+                            {/* BEFORE Section */}
+                            <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-5">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <div className="bg-blue-600 text-white px-3 py-1 rounded text-xs font-bold">
+                                        작업 전 (BEFORE)
+                                    </div>
+                                </div>
+                                <BeforeAfterUpload
+                                    type="before"
+                                    content={beforeContent}
+                                    mediaUrls={beforeMediaPreviews}
+                                    onContentChange={setBeforeContent}
+                                    onMediaAdd={handleBeforeMediaAdd}
+                                    onMediaRemove={handleBeforeMediaRemove}
+                                    onMediaClick={(index) => {
+                                        setViewerUrls(beforeMediaPreviews)
+                                        setViewerIndex(index)
+                                        setViewerOpen(true)
+                                    }}
+                                    uploading={submitting}
+                                />
+                            </div>
 
-                            <div className="border-t border-gray-200 pt-8">
+                            {/* AFTER Section */}
+                            <div className="bg-green-50 border-2 border-green-200 rounded-lg p-5">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <div className="bg-green-600 text-white px-3 py-1 rounded text-xs font-bold">
+                                        작업 후 (AFTER)
+                                    </div>
+                                </div>
                                 <BeforeAfterUpload
                                     type="after"
                                     content={afterContent}
@@ -152,22 +171,45 @@ export default function CompletionModal({
                         </div>
 
                         {/* Footer */}
-                        <div className="sticky bottom-0 bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-200">
-                            <button
-                                onClick={onClose}
-                                disabled={submitting}
-                                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                취소
-                            </button>
-                            <button
-                                onClick={handleSubmit}
-                                disabled={submitting}
-                                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                            >
-                                {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                                완료 처리
-                            </button>
+                        <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200">
+                            {/* Progress Bar */}
+                            {submitting && uploadProgress.total > 0 && (
+                                <div className="px-6 pt-4 pb-2">
+                                    <div className="flex items-center justify-between text-sm mb-2">
+                                        <span className="font-medium text-gray-700">
+                                            업로드 중... {uploadProgress.current}/{uploadProgress.total} 파일
+                                        </span>
+                                        <span className="font-semibold text-blue-600">
+                                            {uploadProgress.percent}%
+                                        </span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                                        <div
+                                            className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                                            style={{ width: `${uploadProgress.percent}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Buttons */}
+                            <div className="px-6 py-4 flex items-center justify-end gap-3">
+                                <button
+                                    onClick={onClose}
+                                    disabled={submitting}
+                                    className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    취소
+                                </button>
+                                <button
+                                    onClick={handleSubmit}
+                                    disabled={submitting}
+                                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                >
+                                    {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                                    완료 처리
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
