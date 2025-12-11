@@ -38,7 +38,7 @@ export default function ApplicationForm({ initialData, readOnly = false, type, t
 
     const getDescription = (t: string | undefined) => {
         switch (t) {
-            case 'blog-reporter': return '전문 기자가 작성하는 고품질 리뷰를 신청하세요.'
+            case 'blog-reporter': return '블로그 게시글 수 증가에 효과적인 리뷰 서비스를 제공합니다.'
             case 'blog-experience': return '실제 체험을 바탕으로 한 생생한 후기를 신청하세요.'
             case 'instagram-popular': return '인스타그램 인기게시물 노출을 통해 홍보 효과를 극대화하세요.'
             case 'seo-optimization': return '최초 계약 후 바로 진행되는 SEO 최적화 작업입니다.'
@@ -563,7 +563,7 @@ ${specialNotes}`
                 )}
 
                 {/* 사진 */}
-                {(!isSimpleForm || type === 'seo-optimization') && (
+                {(!isSimpleForm || type === 'seo-optimization') && type !== 'blog-experience' && (
                     <div>
                         {type === 'seo-optimization' ? (
                             <div className="space-y-4">
@@ -594,13 +594,16 @@ ${specialNotes}`
                         ) : (
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                                    ■ 업로드 할 사진/동영상 <span className="text-red-500">*</span>
+                                    ■ {type === 'instagram-popular' ? '3~9장 첨부해주세요' : '업로드 할 사진/동영상'} <span className="text-red-500">*</span>
                                 </label>
                                 <PhotoUpload
                                     photos={photos}
                                     setPhotos={setPhotos}
                                     initialUrls={initialData?.photo_urls || []}
                                     readOnly={readOnly}
+                                    photosOnly={type === 'instagram-popular'}
+                                    minFiles={type === 'instagram-popular' ? 3 : undefined}
+                                    maxFiles={type === 'instagram-popular' ? 9 : undefined}
                                 />
                                 {!readOnly && blogCount && !isNaN(Number(blogCount)) && Number(blogCount) > 0 && (
                                     <>
@@ -696,20 +699,6 @@ ${specialNotes}`
                             />
                         </div>
 
-                        {/* 플레이스 URL */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                                ■ 업장 플레이스 URL
-                            </label>
-                            <input
-                                type="text"
-                                value={placeUrl}
-                                onChange={(e) => setPlaceUrl(e.target.value)}
-                                className="input-field disabled:bg-gray-100 disabled:text-gray-500"
-                                placeholder="https://map.naver.com/..."
-                                disabled={readOnly}
-                            />
-                        </div>
 
                         {/* 특이사항 */}
                         <div>
@@ -993,9 +982,15 @@ ${specialNotes}`
                             ■ 주의사항 <span className="text-red-500">*</span>
                         </label>
                         <div className="p-4 bg-gray-50 border border-gray-200 rounded text-sm text-gray-700 mb-3">
-                            주의사항 / 해당 가이드라인 1개당 사진을 나누어서 전달주시면 훨씬 상세한 블로그 작성이 가능합니다.
-                            여러 장 회신이 어려우시면 포괄적인 장점들만 작성해 주셔도 여러 블로그 발행이 가능합니다.
-                            블로그는 양질보다는 갯수로 구매 전환과 브랜딩을 위한 사항입니다. 상세내용 공지를 꼭 확인해주세요.
+                            {type === 'blog-experience' ? (
+                                <>체험단 모집 부터 ~ 선정, 마감 까지 시간이 소요 될 수 있습니다. 비전은 체험단(블로거) 분 과의 중개업체로 책임의 소재가 있지 않음을 알립니다 체험단의 노쇼, 분쟁, 등 원만한 합의를 위하여 최선을 다하도록하겠습니다. 체험단은 월 5회 들어가시며, 블로거분들 모집 후 노출잘되는 인원 자동선정하여 전달드리도록하겠습니다.</>
+                            ) : type === 'instagram-popular' ? (
+                                <>인스타그램 인기 게시물은 자사가 보유한 계정에 글을 올려드린 후, 인기 게시물까지 강제로 끌어올리는 작업으로 각 사용자의 알고리즘, 위치 기반과, 이용자의 취미 기반으로 올라가는 사항입니다. 게시된 사진의 변경, 수정 은 불가능합니다. 최대 사진 5장의 전달이 필요하며 인스타그램 노출 락을 피하기 위해 2주에 1회 요청 가능하십니다.</>
+                            ) : (
+                                <>주의사항 / 해당 가이드라인 1개당 사진을 나누어서 전달주시면 훨씬 상세한 블로그 작성이 가능합니다.
+                                    여러 장 회신이 어려우시면 포괄적인 장점들만 작성해 주셔도 여러 블로그 발행이 가능합니다.
+                                    블로그는 양질보다는 갯수로 구매 전환과 브랜딩을 위한 사항입니다. 상세내용 공지를 꼭 확인해주세요.</>
+                            )}
                         </div>
                         <label className="flex items-start gap-2 cursor-pointer">
                             <input

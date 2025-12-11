@@ -10,6 +10,9 @@ interface PhotoUploadProps {
     setPhotos: (photos: File[]) => void
     initialUrls?: string[]
     readOnly?: boolean
+    photosOnly?: boolean
+    minFiles?: number
+    maxFiles?: number
 }
 
 // Internal component to handle individual media items with fallback logic
@@ -128,7 +131,7 @@ const SupabaseMedia = ({
     )
 }
 
-export default function PhotoUpload({ photos, setPhotos, initialUrls = [], readOnly = false }: PhotoUploadProps) {
+export default function PhotoUpload({ photos, setPhotos, initialUrls = [], readOnly = false, photosOnly = false, minFiles, maxFiles }: PhotoUploadProps) {
     const [isDragging, setIsDragging] = useState(false)
     const [selectedImage, setSelectedImage] = useState<string | null>(null) // For popup
 
@@ -149,27 +152,47 @@ export default function PhotoUpload({ photos, setPhotos, initialUrls = [], readO
         e.preventDefault()
         setIsDragging(false)
 
-        const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/') || file.type.startsWith('video/'))
+        const fileFilter = photosOnly
+            ? (file: File) => file.type.startsWith('image/')
+            : (file: File) => file.type.startsWith('image/') || file.type.startsWith('video/')
+
+        const files = Array.from(e.dataTransfer.files).filter(fileFilter)
 
         if (files.length === 0) {
-            alert('이미지 또는 동영상 파일만 업로드 가능합니다.')
+            alert(photosOnly ? '이미지 파일만 업로드 가능합니다.' : '이미지 또는 동영상 파일만 업로드 가능합니다.')
             return
         }
 
-        setPhotos([...photos, ...files])
-    }, [photos, setPhotos, readOnly])
+        const newPhotos = [...photos, ...files]
+        if (maxFiles && newPhotos.length > maxFiles) {
+            alert(`최대 ${maxFiles}개의 파일만 업로드 가능합니다.`)
+            return
+        }
+
+        setPhotos(newPhotos)
+    }, [photos, setPhotos, readOnly, photosOnly, maxFiles])
 
     const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
         if (readOnly) return
         if (e.target.files) {
-            const files = Array.from(e.target.files).filter(file => file.type.startsWith('image/') || file.type.startsWith('video/'))
+            const fileFilter = photosOnly
+                ? (file: File) => file.type.startsWith('image/')
+                : (file: File) => file.type.startsWith('image/') || file.type.startsWith('video/')
+
+            const files = Array.from(e.target.files).filter(fileFilter)
 
             if (files.length === 0) {
-                alert('이미지 또는 동영상 파일만 업로드 가능합니다.')
+                alert(photosOnly ? '이미지 파일만 업로드 가능합니다.' : '이미지 또는 동영상 파일만 업로드 가능합니다.')
                 return
             }
 
-            setPhotos([...photos, ...files])
+            const newPhotos = [...photos, ...files]
+            if (maxFiles && newPhotos.length > maxFiles) {
+                alert(`최대 ${maxFiles}개의 파일만 업로드 가능합니다.`)
+                return
+            }
+
+            setPhotos(newPhotos)
         }
     }
 
