@@ -10,7 +10,7 @@ interface CompletionModalProps {
     storeName: string
     marketingType: string
     onClose: () => void
-    onComplete: (afterContent: string, afterMediaFiles: File[]) => Promise<void>
+    onComplete: (beforeContent: string, beforeMediaFiles: File[], afterContent: string, afterMediaFiles: File[]) => Promise<void>
 }
 
 export default function CompletionModal({
@@ -20,14 +20,34 @@ export default function CompletionModal({
     onClose,
     onComplete
 }: CompletionModalProps) {
+    const [beforeContent, setBeforeContent] = useState('')
+    const [beforeMediaFiles, setBeforeMediaFiles] = useState<File[]>([])
+    const [beforeMediaPreviews, setBeforeMediaPreviews] = useState<string[]>([])
     const [afterContent, setAfterContent] = useState('')
     const [afterMediaFiles, setAfterMediaFiles] = useState<File[]>([])
     const [afterMediaPreviews, setAfterMediaPreviews] = useState<string[]>([])
     const [submitting, setSubmitting] = useState(false)
     const [viewerOpen, setViewerOpen] = useState(false)
     const [viewerIndex, setViewerIndex] = useState(0)
+    const [viewerUrls, setViewerUrls] = useState<string[]>([])
 
-    const handleMediaAdd = (files: File[]) => {
+    const handleBeforeMediaAdd = (files: File[]) => {
+        const newFiles = [...beforeMediaFiles, ...files]
+        setBeforeMediaFiles(newFiles)
+        const newPreviews = files.map(file => URL.createObjectURL(file))
+        setBeforeMediaPreviews(prev => [...prev, ...newPreviews])
+    }
+
+    const handleBeforeMediaRemove = (url: string) => {
+        const index = beforeMediaPreviews.indexOf(url)
+        if (index > -1) {
+            setBeforeMediaPreviews(prev => prev.filter((_, i) => i !== index))
+            setBeforeMediaFiles(prev => prev.filter((_, i) => i !== index))
+            URL.revokeObjectURL(url)
+        }
+    }
+
+    const handleAfterMediaAdd = (files: File[]) => {
         const newFiles = [...afterMediaFiles, ...files]
         setAfterMediaFiles(newFiles)
 
@@ -36,7 +56,7 @@ export default function CompletionModal({
         setAfterMediaPreviews(prev => [...prev, ...newPreviews])
     }
 
-    const handleMediaRemove = (url: string) => {
+    const handleAfterMediaRemove = (url: string) => {
         const index = afterMediaPreviews.indexOf(url)
         if (index > -1) {
             // Remove from previews
@@ -61,8 +81,9 @@ export default function CompletionModal({
 
         setSubmitting(true)
         try {
-            await onComplete(afterContent, afterMediaFiles)
+            await onComplete(beforeContent, beforeMediaFiles, afterContent, afterMediaFiles)
             // Cleanup preview URLs
+            beforeMediaPreviews.forEach(url => URL.revokeObjectURL(url))
             afterMediaPreviews.forEach(url => URL.revokeObjectURL(url))
             onClose()
         } catch (error) {
@@ -80,35 +101,54 @@ export default function CompletionModal({
                 <div className="flex min-h-full items-center justify-center p-4">
                     <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
                         {/* Header */}
-                        <div className="sticky top-0 bg-gradient-to-r from-green-500 to-blue-600 px-6 py-4 flex items-center justify-between">
+                        <div className="sticky top-0 bg-gray-50 border-b border-gray-200 px-6 py-4 flex items-center justify-between">
                             <div>
-                                <h2 className="text-xl font-bold text-white">완료 처리</h2>
-                                <p className="text-sm text-white/90 mt-1">{storeName}</p>
+                                <h2 className="text-lg font-semibold text-gray-900">완료 처리</h2>
+                                <p className="text-sm text-gray-600 mt-1">{storeName}</p>
                             </div>
                             <button
                                 onClick={onClose}
-                                className="text-white hover:text-gray-200 transition-colors"
+                                className="text-gray-600 hover:text-gray-900 transition-colors"
                                 disabled={submitting}
+                                aria-label="닫기"
                             >
                                 <X className="w-6 h-6" />
                             </button>
                         </div>
 
                         {/* Content */}
-                        <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
+                        <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)] space-y-8">
                             <BeforeAfterUpload
-                                type="after"
-                                content={afterContent}
-                                mediaUrls={afterMediaPreviews}
-                                onContentChange={setAfterContent}
-                                onMediaAdd={handleMediaAdd}
-                                onMediaRemove={handleMediaRemove}
+                                type="before"
+                                content={beforeContent}
+                                mediaUrls={beforeMediaPreviews}
+                                onContentChange={setBeforeContent}
+                                onMediaAdd={handleBeforeMediaAdd}
+                                onMediaRemove={handleBeforeMediaRemove}
                                 onMediaClick={(index) => {
+                                    setViewerUrls(beforeMediaPreviews)
                                     setViewerIndex(index)
                                     setViewerOpen(true)
                                 }}
                                 uploading={submitting}
                             />
+
+                            <div className="border-t border-gray-200 pt-8">
+                                <BeforeAfterUpload
+                                    type="after"
+                                    content={afterContent}
+                                    mediaUrls={afterMediaPreviews}
+                                    onContentChange={setAfterContent}
+                                    onMediaAdd={handleAfterMediaAdd}
+                                    onMediaRemove={handleAfterMediaRemove}
+                                    onMediaClick={(index) => {
+                                        setViewerUrls(afterMediaPreviews)
+                                        setViewerIndex(index)
+                                        setViewerOpen(true)
+                                    }}
+                                    uploading={submitting}
+                                />
+                            </div>
                         </div>
 
                         {/* Footer */}
@@ -136,7 +176,7 @@ export default function CompletionModal({
             {/* Media Viewer */}
             {viewerOpen && (
                 <MediaViewer
-                    mediaUrls={afterMediaPreviews}
+                    mediaUrls={viewerUrls}
                     initialIndex={viewerIndex}
                     onClose={() => setViewerOpen(false)}
                 />

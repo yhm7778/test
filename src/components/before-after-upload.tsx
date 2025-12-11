@@ -119,6 +119,7 @@ export default function BeforeAfterUpload({
                             onChange={handleFileInput}
                             className="hidden"
                             disabled={uploading}
+                            aria-label="파일 업로드"
                         />
                         {uploading ? (
                             <div className="flex flex-col items-center gap-2">

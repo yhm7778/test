@@ -151,51 +151,35 @@ export async function sendWelcomeNotification(params: {
 }
 
 /**
- * 신청서 완료 처리 알림톡 발송/**
- * 관리자 완료 처리 시 알림톡 발송
- * 항상 APPLICATION_COMPLETED 템플릿 사용
+ * 계정 생성 시 환영 알림톡 발송
+ * TODO: 템플릿 ID 및 변수 설정 필요
  */
-export async function sendApplicationCompletedNotification(params: {
+export async function sendAccountCreationWelcomeNotification(params: {
     recipientPhone: string
-    applicationType: string
-    blogCount?: number
+    username: string
 }) {
     try {
         const apiKey = process.env.SOLAPI_API_KEY
         const apiSecret = process.env.SOLAPI_API_SECRET
         const pfId = process.env.SOLAPI_KAKAO_CHANNEL_ID
-        const templateId = process.env.SOLAPI_TEMPLATE_APPLICATION_COMPLETED
+        const templateId = process.env.SOLAPI_TEMPLATE_ACCOUNT_WELCOME // TODO: 환경 변수 추가 필요
 
         if (!apiKey || !apiSecret || !pfId || !templateId) {
-            console.warn('Solapi 설정이 완료되지 않았습니다.')
+            console.warn('[Account Welcome] Solapi 설정이 완료되지 않았습니다.')
             return { success: true, message: '알림톡 설정 대기 중' }
         }
 
         const formattedPhone = params.recipientPhone.replace(/[^0-9]/g, '')
 
-        // 솔루션 이름 매핑
-        const solutionNameMap: Record<string, string> = {
-            'blog-reporter': '블로그 기자단',
-            'blog_reporter': '블로그 기자단',
-            'blog-experience': '블로그 체험단',
-            'blog_experience': '블로그 체험단',
-            'instagram-popular': '인스타그램 인기게시물',
-            'instagram_popular': '인스타그램 인기게시물',
-            'seo-optimization': 'SEO최적화작업',
-            'seo_optimization': 'SEO최적화작업',
-            'photo-shooting': '사진촬영',
-            'photo_shooting': '사진촬영',
-            'etc': '기타',
-        }
+        // TODO: 템플릿 변수 설정 (템플릿 정보 필요)
+        // Temporarily skip sending until template variables are configured
+        console.warn('[Account Welcome] Template variables not configured yet')
+        return { success: true, message: '템플릿 변수 설정 대기 중' }
 
-        // 관리자 완료 처리 알림톡은 항상 SolutionName1 변수만 사용
+        /* Template code - uncomment when variables are configured
         const variables: Record<string, string> = {
-            '#{SolutionName1}': solutionNameMap[params.applicationType] || params.applicationType
+            '#{변수명}': params.username
         }
-
-        console.log('[Notification Debug] Template ID:', templateId)
-        console.log('[Notification Debug] Variables:', variables)
-        console.log('[Notification Debug] Application Type:', params.applicationType)
 
         const message: SolapiKakaoMessage = {
             to: formattedPhone,
@@ -207,11 +191,133 @@ export async function sendApplicationCompletedNotification(params: {
         }
 
         await sendSolapiMessage(message, apiKey, apiSecret)
-        console.log('관리자 완료 알림톡 발송 성공:', solutionNameMap[params.applicationType])
+        console.log('[Account Welcome] 환영 알림톡 발송 성공')
 
-        return { success: true, message: '알림톡이 발송되었습니다.' }
+        return { success: true, message: '환영 알림톡이 발송되었습니다.' }
+        */
     } catch (error) {
-        console.error('알림톡 발송 실패:', error)
+        console.error('[Account Welcome] 알림톡 발송 실패:', error)
+        return { success: false, error: '알림톡 발송에 실패했습니다.' }
+    }
+}
+
+/**
+ * 블로그 기자단 완료 알림톡 발송
+ * TODO: 템플릿 ID 및 변수 설정 필요
+ */
+export async function sendBlogReporterCompletedNotification(params: {
+    recipientPhone: string
+}) {
+    try {
+        const apiKey = process.env.SOLAPI_API_KEY
+        const apiSecret = process.env.SOLAPI_API_SECRET
+        const pfId = process.env.SOLAPI_KAKAO_CHANNEL_ID
+        const templateId = process.env.SOLAPI_TEMPLATE_BLOG_REPORTER_COMPLETED
+
+        if (!apiKey || !apiSecret || !pfId || !templateId) {
+            console.warn('[Blog Reporter] Solapi 설정이 완료되지 않았습니다.')
+            return { success: true, message: '알림톡 설정 대기 중' }
+        }
+
+        const formattedPhone = params.recipientPhone.replace(/[^0-9]/g, '')
+
+        // TODO: 템플릿 변수 설정 (템플릿 정보 필요)
+        // Temporarily skip sending until template variables are configured
+        console.warn('[Blog Reporter] Template variables not configured yet')
+        return { success: true, message: '템플릿 변수 설정 대기 중' }
+
+        /* Template code - uncomment when variables are configured
+        const variables: Record<string, string> = {}
+        const message: SolapiKakaoMessage = {
+            to: formattedPhone,
+            kakaoOptions: { pfId, templateId, variables }
+        }
+        await sendSolapiMessage(message, apiKey, apiSecret)
+        console.log('[Blog Reporter] 완료 알림톡 발송 성공')
+        return { success: true, message: '블로그 기자단 완료 알림톡이 발송되었습니다.' }
+        */
+    } catch (error) {
+        console.error('[Blog Reporter] 알림톡 발송 실패:', error)
+        return { success: false, error: '알림톡 발송에 실패했습니다.' }
+    }
+}
+
+/**
+ * 블로그 체험단 완료 알림톡 발송
+ * TODO: 템플릿 ID 및 변수 설정 필요
+ */
+export async function sendBlogExperienceCompletedNotification(params: {
+    recipientPhone: string
+}) {
+    try {
+        const apiKey = process.env.SOLAPI_API_KEY
+        const apiSecret = process.env.SOLAPI_API_SECRET
+        const pfId = process.env.SOLAPI_KAKAO_CHANNEL_ID
+        const templateId = process.env.SOLAPI_TEMPLATE_BLOG_EXPERIENCE_COMPLETED
+
+        if (!apiKey || !apiSecret || !pfId || !templateId) {
+            console.warn('[Blog Experience] Solapi 설정이 완료되지 않았습니다.')
+            return { success: true, message: '알림톡 설정 대기 중' }
+        }
+
+        const formattedPhone = params.recipientPhone.replace(/[^0-9]/g, '')
+
+        // TODO: 템플릿 변수 설정 (템플릿 정보 필요)
+        console.warn('[Blog Experience] Template variables not configured yet')
+        return { success: true, message: '템플릿 변수 설정 대기 중' }
+
+        /* Template code - uncomment when variables are configured
+        const variables: Record<string, string> = {}
+        const message: SolapiKakaoMessage = {
+            to: formattedPhone,
+            kakaoOptions: { pfId, templateId, variables }
+        }
+        await sendSolapiMessage(message, apiKey, apiSecret)
+        console.log('[Blog Experience] 완료 알림톡 발송 성공')
+        return { success: true, message: '블로그 체험단 완료 알림톡이 발송되었습니다.' }
+        */
+    } catch (error) {
+        console.error('[Blog Experience] 알림톡 발송 실패:', error)
+        return { success: false, error: '알림톡 발송에 실패했습니다.' }
+    }
+}
+
+/**
+ * 인스타그램 인기게시물 완료 알림톡 발송
+ * TODO: 템플릿 ID 및 변수 설정 필요
+ */
+export async function sendInstagramCompletedNotification(params: {
+    recipientPhone: string
+}) {
+    try {
+        const apiKey = process.env.SOLAPI_API_KEY
+        const apiSecret = process.env.SOLAPI_API_SECRET
+        const pfId = process.env.SOLAPI_KAKAO_CHANNEL_ID
+        const templateId = process.env.SOLAPI_TEMPLATE_INSTAGRAM_COMPLETED
+
+        if (!apiKey || !apiSecret || !pfId || !templateId) {
+            console.warn('[Instagram] Solapi 설정이 완료되지 않았습니다.')
+            return { success: true, message: '알림톡 설정 대기 중' }
+        }
+
+        const formattedPhone = params.recipientPhone.replace(/[^0-9]/g, '')
+
+        // TODO: 템플릿 변수 설정 (템플릿 정보 필요)
+        console.warn('[Instagram] Template variables not configured yet')
+        return { success: true, message: '템플릿 변수 설정 대기 중' }
+
+        /* Template code - uncomment when variables are configured
+        const variables: Record<string, string> = {}
+        const message: SolapiKakaoMessage = {
+            to: formattedPhone,
+            kakaoOptions: { pfId, templateId, variables }
+        }
+        await sendSolapiMessage(message, apiKey, apiSecret)
+        console.log('[Instagram] 완료 알림톡 발송 성공')
+        return { success: true, message: '인스타그램 완료 알림톡이 발송되었습니다.' }
+        */
+    } catch (error) {
+        console.error('[Instagram] 알림톡 발송 실패:', error)
         return { success: false, error: '알림톡 발송에 실패했습니다.' }
     }
 }

@@ -3,7 +3,6 @@
 import { createClient } from '@/utils/supabase/server'
 import { createClient as createSupabaseClient, SupabaseClient } from '@supabase/supabase-js'
 import { Database } from '@/types/supabase'
-import { sendApplicationCompletedNotification } from './notification'
 
 export async function getClients() {
     const supabase = await createClient()
@@ -230,14 +229,8 @@ export async function updateApplicationStatus(
                 .single() as { data: { phone?: string; username?: string } | null }
 
             if (userProfile?.phone) {
-                // Send notification (don't await to avoid blocking)
-                sendApplicationCompletedNotification({
-                    recipientPhone: userProfile.phone,
-                    applicationType: marketingType || 'etc',
-                    blogCount
-                }).catch(err => {
-                    console.error('Notification error:', err)
-                })
+                // Notification sending is now handled in application-list.tsx
+                console.log('[Admin] Notification will be sent via application-list completion handler')
             }
         } catch (err) {
             console.error('Notification setup error:', err)

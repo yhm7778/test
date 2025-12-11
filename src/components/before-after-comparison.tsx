@@ -40,8 +40,8 @@ export default function BeforeAfterComparison({
     return (
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
             {/* Header */}
-            <div className="bg-gradient-to-r from-blue-500 to-purple-600 px-6 py-4">
-                <h2 className="text-xl font-bold text-white">작업 전/후 비교</h2>
+            <div className="bg-gray-50 border-b border-gray-200 px-6 py-4">
+                <h2 className="text-lg font-semibold text-gray-900">작업 전/후 비교</h2>
             </div>
 
             {/* Tabs */}
@@ -49,10 +49,10 @@ export default function BeforeAfterComparison({
                 <button
                     onClick={() => setActiveTab('before')}
                     className={`
-                        flex-1 px-6 py-4 font-medium transition-colors
+                        flex-1 px-6 py-3 font-medium transition-colors text-sm
                         ${activeTab === 'before'
-                            ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
-                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                            ? 'text-gray-900 border-b-2 border-gray-900 bg-white'
+                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                         }
                     `}
                 >
@@ -61,10 +61,10 @@ export default function BeforeAfterComparison({
                 <button
                     onClick={() => setActiveTab('after')}
                     className={`
-                        flex-1 px-6 py-4 font-medium transition-colors
+                        flex-1 px-6 py-3 font-medium transition-colors text-sm
                         ${activeTab === 'after'
-                            ? 'text-purple-600 border-b-2 border-purple-600 bg-purple-50'
-                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                            ? 'text-gray-900 border-b-2 border-gray-900 bg-white'
+                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                         }
                     `}
                 >

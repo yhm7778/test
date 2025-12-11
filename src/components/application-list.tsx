@@ -154,11 +154,35 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
     }
 
     // Handle Completion with BEFORE/AFTER
-    const handleComplete = async (afterContent: string, afterMediaFiles: File[]) => {
+    const handleComplete = async (beforeContent: string, beforeMediaFiles: File[], afterContent: string, afterMediaFiles: File[]) => {
         if (!completingApp) return
 
         try {
-            // 1. Upload media files to Supabase Storage
+            // 1. Upload BEFORE media files to Supabase Storage
+            const beforeMediaUrls: string[] = []
+
+            for (const file of beforeMediaFiles) {
+                const fileExt = file.name.split('.').pop()
+                const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
+                const filePath = `before/${completingApp.id}/${fileName}`
+
+                const { data, error: uploadError } = await supabase.storage
+                    .from('applications')
+                    .upload(filePath, file, {
+                        cacheControl: '3600',
+                        upsert: false
+                    })
+
+                if (uploadError) throw uploadError
+
+                const { data: { publicUrl } } = supabase.storage
+                    .from('applications')
+                    .getPublicUrl(data.path)
+
+                beforeMediaUrls.push(publicUrl)
+            }
+
+            // 2. Upload AFTER media files to Supabase Storage
             const afterMediaUrls: string[] = []
 
             for (const file of afterMediaFiles) {
@@ -182,10 +206,12 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
                 afterMediaUrls.push(publicUrl)
             }
 
-            // 2. Update application with AFTER data and completion status
+            // 3. Update application with BEFORE/AFTER data and completion status
             const updates: ApplicationUpdate = {
                 status: 'completed',
                 completion_date: new Date().toISOString(),
+                before_content: beforeContent,
+                before_media_urls: beforeMediaUrls,
                 after_content: afterContent,
                 after_media_urls: afterMediaUrls
             }
@@ -202,20 +228,51 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
                 throw new Error('완료 처리에 실패했습니다.')
             }
 
-            // 3. Send notification via API
+            // 3. Send solution-specific notification
             console.log(`[Kakao Notification] Sending completion notification to user ${completingApp.user_id}`)
 
-            fetch('/api/notifications/send-completion', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    applicationId: completingApp.id,
-                    userId: completingApp.user_id,
-                    marketingType: completingApp.marketing_type
-                })
-            }).catch(err => {
-                console.error('Notification API call failed:', err)
-            })
+            // Get user phone number
+            if (!completingApp.user_id) {
+                console.warn('[Kakao Notification] User ID not found')
+                alert('완료 처리되었습니다.')
+                refreshData()
+                return
+            }
+
+            const { data: userProfile } = await supabase
+                .from('profiles')
+                .select('phone')
+                .eq('id', completingApp.user_id)
+                .single() as { data: { phone?: string } | null }
+
+            if (userProfile?.phone) {
+                // Import notification functions dynamically to avoid circular dependencies
+                const {
+                    sendBlogReporterCompletedNotification,
+                    sendBlogExperienceCompletedNotification,
+                    sendInstagramCompletedNotification
+                } = await import('@/app/actions/notification')
+
+                // Send appropriate notification based on marketing type
+                const marketingType = completingApp.marketing_type || 'etc'
+
+                try {
+                    if (marketingType === 'blog-reporter' || marketingType === 'blog_reporter') {
+                        await sendBlogReporterCompletedNotification({ recipientPhone: userProfile.phone })
+                    } else if (marketingType === 'blog-experience' || marketingType === 'blog_experience') {
+                        await sendBlogExperienceCompletedNotification({ recipientPhone: userProfile.phone })
+                    } else if (marketingType === 'instagram-popular' || marketingType === 'instagram_popular') {
+                        await sendInstagramCompletedNotification({ recipientPhone: userProfile.phone })
+                    } else {
+                        console.log(`[Kakao Notification] No specific notification for type: ${marketingType}`)
+                    }
+                } catch (notifError) {
+                    console.error('[Kakao Notification] Failed to send:', notifError)
+                    // Don't throw - notification failure shouldn't block completion
+                }
+            } else {
+                console.warn('[Kakao Notification] User phone number not found')
+            }
 
             // 4. Update local state
             setApplications(prev => prev.map(p =>
