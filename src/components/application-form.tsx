@@ -756,10 +756,6 @@ ${specialNotes}`
                                 disabled={readOnly}
                             />
                         </div>
-
-                        <div className="p-4 bg-gray-50 rounded border border-gray-100 text-sm text-gray-600">
-                            ■ 추가적으로 사진 최소 3장 ~ 최대 9장 보내주세요.
-                        </div>
                     </div>
                 )}
 
