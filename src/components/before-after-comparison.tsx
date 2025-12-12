@@ -13,7 +13,10 @@ interface BeforeAfterComparisonProps {
     afterMediaTypes?: string[]
 }
 
-// Helper function to check if URL is a video
+// Helper function to check if URL is an image
+const isImage = (url: string) => url.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg|tiff|ico|heic|heif|avif)(\?|$)/i)
+
+// Helper function to check if URL is a video (keep for explicit checks if needed, but main logic defaults to video)
 const isVideo = (url: string) => url.match(/\.(mp4|webm|ogg|mov|qt|avi|wmv|flv|m4v|mkv|3gp|ts)(\?|$)/i)
 
 // Video thumbnail component with canvas-based preview
@@ -59,12 +62,19 @@ function VideoThumbnail({ url, onClick }: { url: string; onClick: () => void }) 
             generateThumbnail()
         }
 
+        const handleError = () => {
+            console.error('Video load error', url)
+            setIsLoading(false)
+        }
+
         video.addEventListener('loadeddata', handleLoadedData)
         video.addEventListener('seeked', handleSeeked)
+        video.addEventListener('error', handleError)
 
         return () => {
             video.removeEventListener('loadeddata', handleLoadedData)
             video.removeEventListener('seeked', handleSeeked)
+            video.removeEventListener('error', handleError)
         }
     }, [url])
 
@@ -190,7 +200,7 @@ export default function BeforeAfterComparison({
                                             className="relative aspect-square cursor-pointer group"
                                             onClick={() => openViewer(beforeMediaUrls, index)}
                                         >
-                                            {(beforeMediaTypes ? beforeMediaTypes[index] === 'video' : isVideo(url)) ? (
+                                            {(beforeMediaTypes ? beforeMediaTypes[index] === 'video' : !isImage(url)) ? (
                                                 <VideoThumbnail url={url} onClick={() => openViewer(beforeMediaUrls, index)} />
                                             ) : (
                                                 <img
@@ -228,7 +238,7 @@ export default function BeforeAfterComparison({
                                             className="relative aspect-square cursor-pointer group"
                                             onClick={() => openViewer(afterMediaUrls, index)}
                                         >
-                                            {(afterMediaTypes ? afterMediaTypes[index] === 'video' : isVideo(url)) ? (
+                                            {(afterMediaTypes ? afterMediaTypes[index] === 'video' : !isImage(url)) ? (
                                                 <VideoThumbnail url={url} onClick={() => openViewer(afterMediaUrls, index)} />
                                             ) : (
                                                 <img
@@ -252,11 +262,22 @@ export default function BeforeAfterComparison({
             {/* Media Viewer Modal */}
             {
                 viewerOpen && (
+
                     <MediaViewer
                         mediaUrls={viewerUrls}
                         initialIndex={viewerIndex}
                         onClose={() => setViewerOpen(false)}
-                        mediaTypes={activeTab === 'before' ? beforeMediaTypes : afterMediaTypes}
+                        mediaTypes={viewerUrls.map((url, i) => {
+                            const originalIndex = activeTab === 'before'
+                                ? beforeMediaUrls!.indexOf(url) // Note: This might be inaccurate if duplicates exist, but sufficient for type lookup usually
+                                : afterMediaUrls!.indexOf(url)
+
+                            // Use prop types if available, otherwise use new detection logic
+                            if (activeTab === 'before' && beforeMediaTypes?.[originalIndex]) return beforeMediaTypes[originalIndex]
+                            if (activeTab === 'after' && afterMediaTypes?.[originalIndex]) return afterMediaTypes[originalIndex]
+
+                            return isImage(url) ? 'image' : 'video'
+                        })}
                     />
                 )
             }
