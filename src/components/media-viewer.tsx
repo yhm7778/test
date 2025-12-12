@@ -40,7 +40,7 @@ export default function MediaViewer({ mediaUrls, initialIndex, onClose }: MediaV
     }
 
     const currentUrl = mediaUrls[currentIndex]
-    const isVideo = currentUrl?.match(/\.(mp4|webm|ogg)$/i)
+    const isVideo = currentUrl?.match(/\.(mp4|webm|ogg|mov|qt|avi|wmv|flv|m4v)(\?|$)/i)
 
     return (
         <div
