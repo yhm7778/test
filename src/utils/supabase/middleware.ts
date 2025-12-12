@@ -3,13 +3,28 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { Database } from '@/types/supabase'
 
 export async function updateSession(request: NextRequest) {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+        console.error('CRITICAL: Supabase environment variables are missing in middleware.')
+        // Return error page or redirect to setup page
+        return NextResponse.json(
+            { 
+                error: 'Server configuration error',
+                message: 'Supabase environment variables are missing. Please check your .env.local file.'
+            },
+            { status: 500 }
+        )
+    }
+
     let supabaseResponse = NextResponse.next({
         request,
     })
 
     const supabase = createServerClient<Database>(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        supabaseUrl,
+        supabaseAnonKey,
         {
             cookies: {
                 getAll() {

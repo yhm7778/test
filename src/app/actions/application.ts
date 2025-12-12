@@ -39,10 +39,13 @@ export async function submitApplication(data: {
 
     // 2. Setup Admin Client for Reliable Counting
     let adminSupabase: SupabaseClient<Database> | null = null
-    if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    
+    if (supabaseUrl && serviceRoleKey) {
         adminSupabase = createSupabaseClient<Database>(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_ROLE_KEY,
+            supabaseUrl,
+            serviceRoleKey,
             {
                 auth: {
                     autoRefreshToken: false,

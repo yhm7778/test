@@ -85,13 +85,19 @@ export async function createStaffAccount(username: string, password: string, nam
         return { error: '관리자 권한이 필요합니다.' }
     }
 
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    
+    if (!supabaseUrl) {
+        return { error: 'Supabase URL이 설정되지 않았습니다. 환경 변수 NEXT_PUBLIC_SUPABASE_URL를 확인해주세요.' }
+    }
+    
     if (!serviceRoleKey) {
         return { error: '서비스 역할 키가 설정되지 않았습니다. 환경 변수 SUPABASE_SERVICE_ROLE_KEY를 확인해주세요.' }
     }
 
     const supabaseAdmin = createSupabaseAdminClient<Database>(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        supabaseUrl,
         serviceRoleKey,
         {
             auth: {
@@ -165,14 +171,20 @@ export async function updateUserRole(userId: string, role: 'admin' | 'staff' | '
         return { error: '관리자 권한이 필요합니다.' }
     }
 
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    
+    if (!supabaseUrl) {
+        return { error: 'Supabase URL이 설정되지 않았습니다. 환경 변수 NEXT_PUBLIC_SUPABASE_URL를 확인해주세요.' }
+    }
+    
     if (!serviceRoleKey) {
         return { error: '서비스 역할 키가 설정되지 않았습니다. 환경 변수 SUPABASE_SERVICE_ROLE_KEY를 확인해주세요.' }
     }
 
     // Use service-role client to bypass RLS for role updates
     const supabaseAdmin = createSupabaseAdminClient<Database>(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        supabaseUrl,
         serviceRoleKey,
         {
             auth: {
@@ -230,13 +242,19 @@ export async function deleteUser(userId: string) {
         return { error: '관리자 권한이 필요합니다.' }
     }
 
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    
+    if (!supabaseUrl) {
+        return { error: 'Supabase URL이 설정되지 않았습니다. 환경 변수 NEXT_PUBLIC_SUPABASE_URL를 확인해주세요.' }
+    }
+    
     if (!serviceRoleKey) {
-        return { error: '서비스 역할 키가 설정되지 않았습니다.' }
+        return { error: '서비스 역할 키가 설정되지 않았습니다. 환경 변수 SUPABASE_SERVICE_ROLE_KEY를 확인해주세요.' }
     }
 
     const supabaseAdmin = createSupabaseAdminClient<Database>(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        supabaseUrl,
         serviceRoleKey,
         {
             auth: {

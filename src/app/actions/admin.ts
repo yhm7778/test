@@ -24,10 +24,13 @@ export async function getClients() {
     // Use Service Role if available to bypass RLS, otherwise use authenticated client
     let adminSupabase: SupabaseClient<Database> | Awaited<ReturnType<typeof createClient>> = supabase
     let warning: string | undefined;
-    if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    
+    if (supabaseUrl && serviceRoleKey) {
         adminSupabase = createSupabaseClient<Database>(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_ROLE_KEY,
+            supabaseUrl,
+            serviceRoleKey,
             {
                 auth: {
                     autoRefreshToken: false,
@@ -110,13 +113,20 @@ export async function createClientAccount(userId: string, password: string, name
         return { error: 'Unauthorized' }
     }
 
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-        return { error: 'Server configuration error: Service Role Key missing' }
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    
+    if (!supabaseUrl) {
+        return { error: 'Server configuration error: NEXT_PUBLIC_SUPABASE_URL is missing. Please check your .env.local file.' }
+    }
+    
+    if (!serviceRoleKey) {
+        return { error: 'Server configuration error: SUPABASE_SERVICE_ROLE_KEY is missing. Please check your .env.local file.' }
     }
 
     const adminSupabase = createSupabaseClient<Database>(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY,
+        supabaseUrl,
+        serviceRoleKey,
         {
             auth: {
                 autoRefreshToken: false,

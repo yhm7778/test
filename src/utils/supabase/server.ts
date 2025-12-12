@@ -3,11 +3,24 @@ import { cookies } from 'next/headers'
 import { Database } from '@/types/supabase'
 
 export async function createClient() {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+        const errorMessage = 'CRITICAL: Supabase environment variables are missing. Please check your .env.local file.\n' +
+            'Required variables:\n' +
+            '- NEXT_PUBLIC_SUPABASE_URL\n' +
+            '- NEXT_PUBLIC_SUPABASE_ANON_KEY\n' +
+            'See QUICK_SETUP.md for setup instructions.'
+        console.error(errorMessage)
+        throw new Error(errorMessage)
+    }
+
     const cookieStore = await cookies()
 
     return createServerClient<Database>(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        supabaseUrl,
+        supabaseAnonKey,
         {
             cookies: {
                 get(name: string) {
