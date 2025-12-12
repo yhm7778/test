@@ -434,7 +434,7 @@ export default function PhotoUpload({ photos, setPhotos, initialUrls = [], readO
                             <SupabaseMedia
                                 url={url}
                                 alt={`Uploaded ${index + 1}`}
-                                className="w-full h-full object-cover"
+                                className="w-full h-full object-cover rounded-lg"
                             />
                         </div>
                     ))}
@@ -444,14 +444,14 @@ export default function PhotoUpload({ photos, setPhotos, initialUrls = [], readO
                             {photo.type.startsWith('video/') ? (
                                 <video
                                     src={URL.createObjectURL(photo)}
-                                    className="w-full h-full object-cover"
+                                    className="w-full h-full object-cover rounded-lg"
                                     controls
                                 />
                             ) : (
                                 <img
                                     src={URL.createObjectURL(photo)}
                                     alt={`Preview ${index + 1}`}
-                                    className="w-full h-full object-cover"
+                                    className="w-full h-full object-cover rounded-lg"
                                 />
                             )}
                             {!readOnly && (
