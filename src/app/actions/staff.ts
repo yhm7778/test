@@ -264,7 +264,55 @@ export async function deleteUser(userId: string) {
         }
     )
 
-    // Delete user from auth (this will cascade delete profile due to FK constraint)
+    // 1. Delete completion data (before/after media files)
+    const { data: apps } = await supabaseAdmin
+        .from('applications')
+        .select('id, before_media_urls, after_media_urls')
+        .eq('user_id', userId)
+
+    if (apps && apps.length > 0) {
+        const allPaths: string[] = []
+        
+        for (const app of apps) {
+            // Extract paths from before_media_urls
+            if (app.before_media_urls && app.before_media_urls.length > 0) {
+                app.before_media_urls.forEach(url => {
+                    try {
+                        const urlObj = new URL(url)
+                        const pathParts = urlObj.pathname.split('/applications/')
+                        if (pathParts.length > 1) {
+                            allPaths.push(pathParts[1])
+                        }
+                    } catch {
+                        // Ignore invalid URLs
+                    }
+                })
+            }
+            
+            // Extract paths from after_media_urls
+            if (app.after_media_urls && app.after_media_urls.length > 0) {
+                app.after_media_urls.forEach(url => {
+                    try {
+                        const urlObj = new URL(url)
+                        const pathParts = urlObj.pathname.split('/applications/')
+                        if (pathParts.length > 1) {
+                            allPaths.push(pathParts[1])
+                        }
+                    } catch {
+                        // Ignore invalid URLs
+                    }
+                })
+            }
+        }
+
+        if (allPaths.length > 0) {
+            await supabaseAdmin.storage
+                .from('applications')
+                .remove(allPaths)
+        }
+    }
+
+    // 2. Delete user from auth (this will cascade delete profile due to FK constraint)
     const { error } = await supabaseAdmin.auth.admin.deleteUser(userId)
 
     if (error) {
