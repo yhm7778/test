@@ -316,8 +316,29 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
                 p.id === completingApp.id ? { ...p, ...updates } : p
             ))
 
+            // 5. Remove completed app from selectedIds
+            setSelectedIds(prev => prev.filter(id => id !== completingApp.id))
+
             alert('완료 처리되었습니다. (카카오톡 알림 발송 중)')
             refreshData()
+
+            // 6. If there are more selected items that need completion, open next one
+            const remainingSelected = selectedIds.filter(id => {
+                const app = applications.find(a => a.id === id)
+                return app && app.id !== completingApp.id && app.status !== 'completed'
+            })
+            
+            if (remainingSelected.length > 0) {
+                // Wait a bit for state to update, then open next modal
+                setTimeout(() => {
+                    const nextApp = applications.find(app => remainingSelected.includes(app.id) && app.status !== 'completed')
+                    if (nextApp) {
+                        setCompletingApp(nextApp)
+                    }
+                }, 100)
+            } else {
+                setCompletingApp(null)
+            }
         } catch (error) {
             console.error('Completion error:', error)
             throw error
@@ -341,14 +362,28 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
             return
         }
 
-        if (!confirm(`${targetIds.length}개의 신청서를 ${statusText} 상태로 변경하시겠습니까?`)) return
+        // If completing, open modal for each selected application (one at a time)
+        if (status === 'completed') {
+            // Get first selected application that needs completion
+            const firstApp = applications.find(app => targetIds.includes(app.id) && app.status !== 'completed')
+            if (firstApp) {
+                setCompletingApp(firstApp)
+                // Note: After completing this one, user can continue with next ones if needed
+            }
+            return
+        }
+
+        // Uncompleting - direct update (no modal needed)
+        if (!confirm(`${targetIds.length}개의 신청서를 미완료 상태로 변경하시겠습니까?`)) return
 
         try {
-            const updates: ApplicationUpdate = { status }
-            if (status === 'completed') {
-                updates.completion_date = new Date().toISOString()
-            } else {
-                updates.completion_date = null
+            const updates: ApplicationUpdate = { 
+                status,
+                completion_date: null,
+                before_content: null,
+                after_content: null,
+                before_media_urls: null,
+                after_media_urls: null
             }
 
             const { data, error } = await supabase
@@ -363,20 +398,13 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
                 throw new Error('No rows updated. Possible RLS issue.')
             }
 
-            if (status === 'completed') {
-                // Kakao Notification Stub for Bulk
-                console.log(`[Kakao Notification] Sending completion notifications to ${targetIds.length} users`)
-                alert(`${targetIds.length}개의 신청서가 완료 처리되었습니다. (카카오톡 알림 발송 - Stub)`)
-            } else {
-                alert(`${targetIds.length}개의 신청서가 미완료 처리되었습니다.`)
-            }
+            alert(`${targetIds.length}개의 신청서가 미완료 처리되었습니다.`)
 
             setApplications(prev => prev.map(app =>
                 targetIds.includes(app.id) ? { ...app, ...updates } : app
             ))
-            setSelectedIds([]) // Optional: Clear selection after action
+            setSelectedIds([])
 
-            // Refresh server data with a small delay to ensure DB propagation
             refreshData()
         } catch (error) {
             console.error('Bulk status update error:', error)
