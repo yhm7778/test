@@ -37,10 +37,12 @@ function VideoThumbnail({ url, onClick }: { url: string; onClick: () => void }) 
                         const dataUrl = canvas.toDataURL('image/jpeg', 0.8)
                         setThumbnailUrl(dataUrl)
                         setIsLoading(false)
+                        return
                     }
                 }
             } catch (error) {
                 console.error('Failed to generate thumbnail:', error)
+            } finally {
                 setIsLoading(false)
             }
         }
@@ -67,7 +69,10 @@ function VideoThumbnail({ url, onClick }: { url: string; onClick: () => void }) 
     return (
         <div
             className="relative w-full h-full bg-gray-900 rounded-lg overflow-hidden cursor-pointer group"
-            onClick={onClick}
+            onClick={(e) => {
+                e.stopPropagation()
+                onClick()
+            }}
         >
             <video
                 ref={videoRef}
