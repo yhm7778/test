@@ -32,9 +32,9 @@ function VideoThumbnail({ url, onClick }: { url: string; onClick: () => void }) 
 
         const generateThumbnail = () => {
             try {
-                if (video.readyState >= 2) { // HAVE_CURRENT_DATA
-                    canvas.width = video.videoWidth || 320
-                    canvas.height = video.videoHeight || 240
+                if (video.readyState >= 2 && video.videoWidth > 0) {
+                    canvas.width = video.videoWidth
+                    canvas.height = video.videoHeight
                     const ctx = canvas.getContext('2d')
                     if (ctx) {
                         ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
