@@ -117,7 +117,6 @@ const SupabaseMedia = ({
                 className={className}
                 onClick={onClick}
                 onError={handleError}
-                loading="lazy"
             />
         </div>
     )

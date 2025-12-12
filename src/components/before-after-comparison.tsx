@@ -263,7 +263,6 @@ function MediaItem({
                     alt={`미디어 ${index + 1}`}
                     className="w-full h-full object-cover rounded-lg group-hover:opacity-90 transition-opacity"
                     onError={handleImageError}
-                    loading="lazy"
                 />
             )}
         </div>
