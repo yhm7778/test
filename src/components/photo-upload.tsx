@@ -150,6 +150,13 @@ const VideoThumbnailMedia = memo(function VideoThumbnailMedia({
 
     // Pre-generate signed URL on mount for better performance
     useEffect(() => {
+        // Skip if already processed this URL
+        if (urlProcessedRef.current === url && currentUrl) {
+            return
+        }
+
+        urlProcessedRef.current = url
+
         const generateSignedUrl = async () => {
             // Check cache first
             const cached = getCachedSignedUrl(url)
@@ -188,8 +195,10 @@ const VideoThumbnailMedia = memo(function VideoThumbnailMedia({
     useEffect(() => {
         const video = videoRef.current
         const canvas = canvasRef.current
-        if (!video || !canvas || controls) {
-            setIsLoading(false)
+        if (!video || !canvas || !currentUrl) return
+
+        // Don't reload if video src is already set to currentUrl
+        if (video.src && video.src === currentUrl && thumbnailUrl) {
             return
         }
 
@@ -230,13 +239,8 @@ const VideoThumbnailMedia = memo(function VideoThumbnailMedia({
             onError?.()
         }
 
-        // Don't reload if video src is already set to currentUrl
-        if (video.src && currentUrl && video.src === currentUrl && thumbnailUrl) {
-            return
-        }
-
-        // Only set src if it's different and currentUrl is not null
-        if (currentUrl && video.src !== currentUrl) {
+        // Only set src if it's different
+        if (video.src !== currentUrl) {
             video.src = currentUrl
         }
         
@@ -249,7 +253,7 @@ const VideoThumbnailMedia = memo(function VideoThumbnailMedia({
             video.removeEventListener('seeked', handleSeeked)
             video.removeEventListener('error', handleError)
         }
-    }, [currentUrl, controls, thumbnailUrl]) // Remove url and onError from dependencies
+    }, [currentUrl, thumbnailUrl]) // Add thumbnailUrl to prevent unnecessary reloads
 
     if (controls) {
         if (!currentUrl) {
@@ -309,12 +313,8 @@ const VideoThumbnailMedia = memo(function VideoThumbnailMedia({
         </div>
     )
 }, (prevProps, nextProps) => {
-    // Only re-render if url, className, or controls change (ignore onClick and onError changes)
-    return (
-        prevProps.url === nextProps.url &&
-        prevProps.className === nextProps.className &&
-        prevProps.controls === nextProps.controls
-    )
+    // Only re-render if url changes (ignore onClick, onError, className, and controls changes)
+    return prevProps.url === nextProps.url
 })
 
 export default function PhotoUpload({ photos, setPhotos, initialUrls = [], readOnly = false, photosOnly = false, minFiles, maxFiles }: PhotoUploadProps) {
