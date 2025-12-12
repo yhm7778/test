@@ -15,55 +15,8 @@ interface BeforeAfterUploadProps {
     uploading?: boolean
 }
 
-export default function BeforeAfterUpload({
-    type,
-    content,
-    mediaUrls,
-    onContentChange,
-    onMediaAdd,
-    onMediaRemove,
-    onMediaClick,
-    readOnly = false,
-    uploading = false
-}: BeforeAfterUploadProps) {
-    const [dragActive, setDragActive] = useState(false)
-    const fileInputRef = useRef<HTMLInputElement>(null)
-
-    const handleDrag = (e: React.DragEvent) => {
-        e.preventDefault()
-        e.stopPropagation()
-        if (e.type === 'dragenter' || e.type === 'dragover') {
-            setDragActive(true)
-        } else if (e.type === 'dragleave') {
-            setDragActive(false)
-        }
-    }
-
-    const handleDrop = (e: React.DragEvent) => {
-        e.preventDefault()
-        e.stopPropagation()
-        setDragActive(false)
-
-        if (readOnly) return
-
-        const files = Array.from(e.dataTransfer.files)
-        const validFiles = files.filter(file =>
-            file.type.startsWith('image/') || file.type.startsWith('video/')
-        )
-
-        if (validFiles.length > 0) {
-            onMediaAdd(validFiles)
-        }
-    }
-
-    const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files.length > 0) {
-            const files = Array.from(e.target.files)
-            onMediaAdd(files)
-        }
-    }
-
-    const isVideo = (url: string) => url.match(/\.(mp4|webm|ogg|mov|qt|avi|wmv|flv|m4v)(\?|$)/i)
+// Helper function to check if URL is a video
+const isVideo = (url: string) => url.match(/\.(mp4|webm|ogg|mov|qt|avi|wmv|flv|m4v)(\?|$)/i)
 
 // Video thumbnail component with canvas-based preview
 function VideoThumbnail({ url, onClick }: { url: string; onClick: () => void }) {
@@ -152,6 +105,54 @@ function VideoThumbnail({ url, onClick }: { url: string; onClick: () => void }) 
         </div>
     )
 }
+
+export default function BeforeAfterUpload({
+    type,
+    content,
+    mediaUrls,
+    onContentChange,
+    onMediaAdd,
+    onMediaRemove,
+    onMediaClick,
+    readOnly = false,
+    uploading = false
+}: BeforeAfterUploadProps) {
+    const [dragActive, setDragActive] = useState(false)
+    const fileInputRef = useRef<HTMLInputElement>(null)
+
+    const handleDrag = (e: React.DragEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        if (e.type === 'dragenter' || e.type === 'dragover') {
+            setDragActive(true)
+        } else if (e.type === 'dragleave') {
+            setDragActive(false)
+        }
+    }
+
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        setDragActive(false)
+
+        if (readOnly) return
+
+        const files = Array.from(e.dataTransfer.files)
+        const validFiles = files.filter(file =>
+            file.type.startsWith('image/') || file.type.startsWith('video/')
+        )
+
+        if (validFiles.length > 0) {
+            onMediaAdd(validFiles)
+        }
+    }
+
+    const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files.length > 0) {
+            const files = Array.from(e.target.files)
+            onMediaAdd(files)
+        }
+    }
 
     const title = type === 'before' ? '작업 전 (BEFORE)' : '작업 후 (AFTER)'
     const placeholder = type === 'before'
