@@ -9,10 +9,12 @@ interface BeforeAfterComparisonProps {
     afterContent: string | null
     beforeMediaUrls: string[] | null
     afterMediaUrls: string[] | null
+    beforeMediaTypes?: string[]
+    afterMediaTypes?: string[]
 }
 
 // Helper function to check if URL is a video
-const isVideo = (url: string) => url.match(/\.(mp4|webm|ogg|mov|qt|avi|wmv|flv|m4v)(\?|$)/i)
+const isVideo = (url: string) => url.match(/\.(mp4|webm|ogg|mov|qt|avi|wmv|flv|m4v|mkv|3gp|ts)(\?|$)/i)
 
 // Video thumbnail component with canvas-based preview
 function VideoThumbnail({ url, onClick }: { url: string; onClick: () => void }) {
@@ -109,7 +111,9 @@ export default function BeforeAfterComparison({
     beforeContent,
     afterContent,
     beforeMediaUrls,
-    afterMediaUrls
+    afterMediaUrls,
+    beforeMediaTypes,
+    afterMediaTypes
 }: BeforeAfterComparisonProps) {
     const [activeTab, setActiveTab] = useState<'before' | 'after'>('before')
     const [viewerOpen, setViewerOpen] = useState(false)
@@ -186,7 +190,7 @@ export default function BeforeAfterComparison({
                                             className="relative aspect-square cursor-pointer group"
                                             onClick={() => openViewer(beforeMediaUrls, index)}
                                         >
-                                            {isVideo(url) ? (
+                                            {(beforeMediaTypes ? beforeMediaTypes[index] === 'video' : isVideo(url)) ? (
                                                 <VideoThumbnail url={url} onClick={() => openViewer(beforeMediaUrls, index)} />
                                             ) : (
                                                 <img
@@ -224,7 +228,7 @@ export default function BeforeAfterComparison({
                                             className="relative aspect-square cursor-pointer group"
                                             onClick={() => openViewer(afterMediaUrls, index)}
                                         >
-                                            {isVideo(url) ? (
+                                            {(afterMediaTypes ? afterMediaTypes[index] === 'video' : isVideo(url)) ? (
                                                 <VideoThumbnail url={url} onClick={() => openViewer(afterMediaUrls, index)} />
                                             ) : (
                                                 <img
@@ -246,13 +250,16 @@ export default function BeforeAfterComparison({
             </div>
 
             {/* Media Viewer Modal */}
-            {viewerOpen && (
-                <MediaViewer
-                    mediaUrls={viewerUrls}
-                    initialIndex={viewerIndex}
-                    onClose={() => setViewerOpen(false)}
-                />
-            )}
-        </div>
+            {
+                viewerOpen && (
+                    <MediaViewer
+                        mediaUrls={viewerUrls}
+                        initialIndex={viewerIndex}
+                        onClose={() => setViewerOpen(false)}
+                        mediaTypes={activeTab === 'before' ? beforeMediaTypes : afterMediaTypes}
+                    />
+                )
+            }
+        </div >
     )
 }
