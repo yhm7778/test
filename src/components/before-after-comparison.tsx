@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { Image as ImageIcon, Video } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { Image as ImageIcon, Video, Loader2 } from 'lucide-react'
 import MediaViewer from './media-viewer'
 
 interface BeforeAfterComparisonProps {
@@ -28,7 +28,93 @@ export default function BeforeAfterComparison({
         setViewerOpen(true)
     }
 
-    const isVideo = (url: string) => url.match(/\.(mp4|webm|ogg)$/i)
+    const isVideo = (url: string) => url.match(/\.(mp4|webm|ogg|mov|qt|avi|wmv|flv|m4v)(\?|$)/i)
+
+// Video thumbnail component with canvas-based preview
+function VideoThumbnail({ url, onClick }: { url: string; onClick: () => void }) {
+    const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null)
+    const [isLoading, setIsLoading] = useState(true)
+    const videoRef = useRef<HTMLVideoElement>(null)
+    const canvasRef = useRef<HTMLCanvasElement>(null)
+
+    useEffect(() => {
+        const video = videoRef.current
+        const canvas = canvasRef.current
+        if (!video || !canvas) return
+
+        const generateThumbnail = () => {
+            try {
+                if (video.readyState >= 2 && video.videoWidth > 0) {
+                    canvas.width = video.videoWidth
+                    canvas.height = video.videoHeight
+                    const ctx = canvas.getContext('2d')
+                    if (ctx) {
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+                        const dataUrl = canvas.toDataURL('image/jpeg', 0.8)
+                        setThumbnailUrl(dataUrl)
+                        setIsLoading(false)
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to generate thumbnail:', error)
+                setIsLoading(false)
+            }
+        }
+
+        const handleLoadedData = () => {
+            if (video.duration > 0) {
+                video.currentTime = Math.min(0.5, video.duration * 0.1)
+            }
+        }
+
+        const handleSeeked = () => {
+            generateThumbnail()
+        }
+
+        video.addEventListener('loadeddata', handleLoadedData)
+        video.addEventListener('seeked', handleSeeked)
+
+        return () => {
+            video.removeEventListener('loadeddata', handleLoadedData)
+            video.removeEventListener('seeked', handleSeeked)
+        }
+    }, [url])
+
+    return (
+        <div
+            className="relative w-full h-full bg-gray-900 rounded-lg overflow-hidden cursor-pointer group"
+            onClick={onClick}
+        >
+            <video
+                ref={videoRef}
+                src={url}
+                className="hidden"
+                muted
+                preload="metadata"
+                playsInline
+            />
+            <canvas ref={canvasRef} className="hidden" />
+            {thumbnailUrl ? (
+                <img
+                    src={thumbnailUrl}
+                    alt="Video thumbnail"
+                    className="w-full h-full object-cover"
+                />
+            ) : (
+                <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                    {isLoading ? (
+                        <Loader2 className="w-8 h-8 text-gray-400 animate-spin" />
+                    ) : (
+                        <Video className="w-8 h-8 text-gray-400" />
+                    )}
+                </div>
+            )}
+            <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-colors pointer-events-none">
+                <Video className="w-12 h-12 text-white" />
+            </div>
+        </div>
+    )
+}
 
     const hasBeforeData = beforeContent || (beforeMediaUrls && beforeMediaUrls.length > 0)
     const hasAfterData = afterContent || (afterMediaUrls && afterMediaUrls.length > 0)
@@ -95,15 +181,7 @@ export default function BeforeAfterComparison({
                                             onClick={() => openViewer(beforeMediaUrls, index)}
                                         >
                                             {isVideo(url) ? (
-                                                <div className="relative w-full h-full bg-gray-900 rounded-lg overflow-hidden">
-                                                    <video
-                                                        src={url}
-                                                        className="w-full h-full object-cover"
-                                                    />
-                                                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-colors">
-                                                        <Video className="w-12 h-12 text-white" />
-                                                    </div>
-                                                </div>
+                                                <VideoThumbnail url={url} onClick={() => openViewer(beforeMediaUrls, index)} />
                                             ) : (
                                                 <img
                                                     src={url}
@@ -141,15 +219,7 @@ export default function BeforeAfterComparison({
                                             onClick={() => openViewer(afterMediaUrls, index)}
                                         >
                                             {isVideo(url) ? (
-                                                <div className="relative w-full h-full bg-gray-900 rounded-lg overflow-hidden">
-                                                    <video
-                                                        src={url}
-                                                        className="w-full h-full object-cover"
-                                                    />
-                                                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-colors">
-                                                        <Video className="w-12 h-12 text-white" />
-                                                    </div>
-                                                </div>
+                                                <VideoThumbnail url={url} onClick={() => openViewer(afterMediaUrls, index)} />
                                             ) : (
                                                 <img
                                                     src={url}
