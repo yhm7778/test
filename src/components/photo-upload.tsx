@@ -1,8 +1,8 @@
 /* eslint-disable @next/next/no-img-element */
 'use client'
 
-import { useState, useCallback, ChangeEvent } from 'react'
-import { Upload, X, ImageOff, RefreshCw, Play, FileVideo } from 'lucide-react'
+import { useState, useCallback, ChangeEvent, useRef, useEffect } from 'react'
+import { Upload, X, ImageOff, RefreshCw, Play, FileVideo, Loader2 } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 
 interface PhotoUploadProps {
@@ -91,40 +91,7 @@ const SupabaseMedia = ({
     }
 
     if (mediaType === 'video') {
-        return (
-            <div className="relative w-full h-full flex items-center justify-center">
-                <video
-                    src={currentUrl}
-                    className={className}
-                    controls={controls}
-                    onClick={onClick}
-                    onError={handleError}
-                    preload="metadata"
-                    playsInline
-                    muted
-                    onLoadedMetadata={(e) => {
-                        // Seek to 0.1s for thumbnail
-                        const video = e.currentTarget
-                        if (!controls && video.duration > 0.1) {
-                            video.currentTime = 0.1
-                        }
-                    }}
-                    onSeeked={(e) => {
-                        // Pause after seeking to show thumbnail
-                        if (!controls) {
-                            e.currentTarget.pause()
-                        }
-                    }}
-                />
-                {!controls && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none">
-                        <div className="bg-black/50 rounded-full p-3 backdrop-blur-sm">
-                            <Play className="h-6 w-6 text-white fill-white" />
-                        </div>
-                    </div>
-                )}
-            </div>
-        )
+        return <VideoThumbnailMedia url={currentUrl} className={className} controls={controls} onClick={onClick} onError={handleError} />
     }
 
     return (
@@ -141,6 +108,125 @@ const SupabaseMedia = ({
                     <RefreshCw className="h-6 w-6 animate-spin text-blue-500" />
                 </div>
             )}
+        </div>
+    )
+}
+
+// Video thumbnail component with canvas-based preview
+function VideoThumbnailMedia({ 
+    url, 
+    className, 
+    controls, 
+    onClick, 
+    onError 
+}: { 
+    url: string
+    className?: string
+    controls?: boolean
+    onClick?: () => void
+    onError?: () => void
+}) {
+    const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null)
+    const [isLoading, setIsLoading] = useState(true)
+    const videoRef = useRef<HTMLVideoElement>(null)
+    const canvasRef = useRef<HTMLCanvasElement>(null)
+
+    useEffect(() => {
+        const video = videoRef.current
+        const canvas = canvasRef.current
+        if (!video || !canvas || controls) {
+            setIsLoading(false)
+            return
+        }
+
+        const generateThumbnail = () => {
+            try {
+                if (video.readyState >= 2 && video.videoWidth > 0) {
+                    canvas.width = video.videoWidth
+                    canvas.height = video.videoHeight
+                    const ctx = canvas.getContext('2d')
+                    if (ctx) {
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+                        const dataUrl = canvas.toDataURL('image/jpeg', 0.8)
+                        setThumbnailUrl(dataUrl)
+                        setIsLoading(false)
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to generate thumbnail:', error)
+                setIsLoading(false)
+            }
+        }
+
+        const handleLoadedData = () => {
+            if (video.duration > 0) {
+                video.currentTime = Math.min(0.5, video.duration * 0.1)
+            }
+        }
+
+        const handleSeeked = () => {
+            generateThumbnail()
+        }
+
+        video.addEventListener('loadeddata', handleLoadedData)
+        video.addEventListener('seeked', handleSeeked)
+
+        return () => {
+            video.removeEventListener('loadeddata', handleLoadedData)
+            video.removeEventListener('seeked', handleSeeked)
+        }
+    }, [url, controls])
+
+    if (controls) {
+        return (
+            <div className="relative w-full h-full flex items-center justify-center">
+                <video
+                    ref={videoRef}
+                    src={url}
+                    className={className}
+                    controls
+                    onClick={onClick}
+                    onError={onError}
+                    preload="metadata"
+                    playsInline
+                />
+            </div>
+        )
+    }
+
+    return (
+        <div className="relative w-full h-full flex items-center justify-center">
+            <video
+                ref={videoRef}
+                src={url}
+                className="hidden"
+                muted
+                preload="metadata"
+                playsInline
+                onError={onError}
+            />
+            <canvas ref={canvasRef} className="hidden" />
+            {thumbnailUrl ? (
+                <img
+                    src={thumbnailUrl}
+                    alt="Video thumbnail"
+                    className={className}
+                    onClick={onClick}
+                />
+            ) : (
+                <div className={`${className} bg-gray-800 flex items-center justify-center`}>
+                    {isLoading ? (
+                        <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
+                    ) : (
+                        <FileVideo className="w-6 h-6 text-gray-400" />
+                    )}
+                </div>
+            )}
+            <div className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none">
+                <div className="bg-black/50 rounded-full p-3 backdrop-blur-sm">
+                    <Play className="h-6 w-6 text-white fill-white" />
+                </div>
+            </div>
         </div>
     )
 }

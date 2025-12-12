@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Upload, X, Loader2, Image as ImageIcon, Video } from 'lucide-react'
 
 interface BeforeAfterUploadProps {
@@ -63,7 +63,95 @@ export default function BeforeAfterUpload({
         }
     }
 
-    const isVideo = (url: string) => url.match(/\.(mp4|webm|ogg)$/i)
+    const isVideo = (url: string) => url.match(/\.(mp4|webm|ogg|mov|qt|avi|wmv|flv|m4v)(\?|$)/i)
+
+// Video thumbnail component with canvas-based preview
+function VideoThumbnail({ url, onClick }: { url: string; onClick: () => void }) {
+    const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null)
+    const [isLoading, setIsLoading] = useState(true)
+    const videoRef = useRef<HTMLVideoElement>(null)
+    const canvasRef = useRef<HTMLCanvasElement>(null)
+
+    useEffect(() => {
+        const video = videoRef.current
+        const canvas = canvasRef.current
+        if (!video || !canvas) return
+
+        const generateThumbnail = () => {
+            try {
+                if (video.readyState >= 2) { // HAVE_CURRENT_DATA
+                    canvas.width = video.videoWidth || 320
+                    canvas.height = video.videoHeight || 240
+                    const ctx = canvas.getContext('2d')
+                    if (ctx) {
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+                        const dataUrl = canvas.toDataURL('image/jpeg', 0.8)
+                        setThumbnailUrl(dataUrl)
+                        setIsLoading(false)
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to generate thumbnail:', error)
+                setIsLoading(false)
+            }
+        }
+
+        const handleLoadedData = () => {
+            if (video.duration > 0) {
+                video.currentTime = Math.min(0.5, video.duration * 0.1)
+            }
+        }
+
+        const handleSeeked = () => {
+            generateThumbnail()
+        }
+
+        video.addEventListener('loadeddata', handleLoadedData)
+        video.addEventListener('seeked', handleSeeked)
+
+        return () => {
+            video.removeEventListener('loadeddata', handleLoadedData)
+            video.removeEventListener('seeked', handleSeeked)
+        }
+    }, [url])
+
+    return (
+        <div
+            className="relative w-full h-full bg-black rounded-lg overflow-hidden cursor-pointer"
+            onClick={onClick}
+        >
+            <video
+                ref={videoRef}
+                src={url}
+                className="hidden"
+                muted
+                preload="metadata"
+                playsInline
+            />
+            <canvas ref={canvasRef} className="hidden" />
+            {thumbnailUrl ? (
+                <img
+                    src={thumbnailUrl}
+                    alt="Video thumbnail"
+                    className="w-full h-full object-cover"
+                />
+            ) : (
+                <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                    {isLoading ? (
+                        <Loader2 className="w-8 h-8 text-gray-400 animate-spin" />
+                    ) : (
+                        <Video className="w-8 h-8 text-gray-400" />
+                    )}
+                </div>
+            )}
+            <div className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none">
+                <div className="bg-black/40 rounded-full p-2 backdrop-blur-sm">
+                    <Video className="w-8 h-8 text-white" />
+                </div>
+            </div>
+        </div>
+    )
+}
 
     const title = type === 'before' ? '작업 전 (BEFORE)' : '작업 후 (AFTER)'
     const placeholder = type === 'before'
@@ -151,34 +239,7 @@ export default function BeforeAfterUpload({
                         {mediaUrls.map((url, index) => (
                             <div key={url} className="relative group aspect-square">
                                 {isVideo(url) ? (
-                                    <div
-                                        className="relative w-full h-full bg-black rounded-lg overflow-hidden cursor-pointer"
-                                        onClick={() => onMediaClick?.(index)}
-                                    >
-                                        <video
-                                            src={url}
-                                            className="w-full h-full object-cover"
-                                            muted
-                                            preload="metadata"
-                                            playsInline
-                                            onLoadedMetadata={(e) => {
-                                                // Seek to 0.1s for thumbnail
-                                                const video = e.currentTarget
-                                                if (video.duration > 0.1) {
-                                                    video.currentTime = 0.1
-                                                }
-                                            }}
-                                            onSeeked={(e) => {
-                                                // Pause after seeking to show thumbnail
-                                                e.currentTarget.pause()
-                                            }}
-                                        />
-                                        <div className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none">
-                                            <div className="bg-black/40 rounded-full p-2 backdrop-blur-sm">
-                                                <Video className="w-8 h-8 text-white" />
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <VideoThumbnail url={url} onClick={() => onMediaClick?.(index)} />
                                 ) : (
                                     <img
                                         src={url}
