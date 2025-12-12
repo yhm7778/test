@@ -41,10 +41,12 @@ function VideoThumbnail({ url, onClick }: { url: string; onClick: () => void }) 
                         const dataUrl = canvas.toDataURL('image/jpeg', 0.8)
                         setThumbnailUrl(dataUrl)
                         setIsLoading(false)
+                        return
                     }
                 }
             } catch (error) {
                 console.error('Failed to generate thumbnail:', error)
+            } finally {
                 setIsLoading(false)
             }
         }
