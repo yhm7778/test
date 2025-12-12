@@ -25,13 +25,21 @@ const isVideo = (url: string) => url.match(/\.(mp4|webm|ogg|mov|qt|avi|wmv|flv|m
 function VideoThumbnail({ url, onClick }: { url: string; onClick: () => void }) {
     const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(true)
-    const [currentUrl, setCurrentUrl] = useState(url)
+    const [currentUrl, setCurrentUrl] = useState<string | null>(null)
     const videoRef = useRef<HTMLVideoElement>(null)
     const canvasRef = useRef<HTMLCanvasElement>(null)
-    const supabase = createClient()
+    const supabaseRef = useRef(createClient())
+    const urlProcessedRef = useRef<string | null>(null)
 
     // Pre-generate signed URL on mount for better performance
     useEffect(() => {
+        // Skip if already processed this URL
+        if (urlProcessedRef.current === url && currentUrl) {
+            return
+        }
+
+        urlProcessedRef.current = url
+
         const generateSignedUrl = async () => {
             // Check cache first
             const cached = getCachedSignedUrl(url)
@@ -45,7 +53,7 @@ function VideoThumbnail({ url, onClick }: { url: string; onClick: () => void }) 
             if (match && match[1]) {
                 try {
                     const path = decodeURIComponent(match[1])
-                    const { data, error: signedError } = await supabase.storage
+                    const { data, error: signedError } = await supabaseRef.current.storage
                         .from('applications')
                         .createSignedUrl(path, 86400) // 24 hours
 
@@ -65,12 +73,17 @@ function VideoThumbnail({ url, onClick }: { url: string; onClick: () => void }) 
         }
 
         generateSignedUrl()
-    }, [url, supabase])
+    }, [url]) // Remove supabase from dependencies
 
     useEffect(() => {
         const video = videoRef.current
         const canvas = canvasRef.current
-        if (!video || !canvas) return
+        if (!video || !canvas || !currentUrl) return
+
+        // Don't reload if video src is already set to currentUrl
+        if (video.src && video.src === currentUrl && thumbnailUrl) {
+            return
+        }
 
         const generateThumbnail = () => {
             try {
@@ -108,7 +121,11 @@ function VideoThumbnail({ url, onClick }: { url: string; onClick: () => void }) 
             setIsLoading(false)
         }
 
-        video.src = currentUrl
+        // Only set src if it's different
+        if (video.src !== currentUrl) {
+            video.src = currentUrl
+        }
+        
         video.addEventListener('loadeddata', handleLoadedData)
         video.addEventListener('seeked', handleSeeked)
         video.addEventListener('error', handleError)
@@ -118,7 +135,7 @@ function VideoThumbnail({ url, onClick }: { url: string; onClick: () => void }) 
             video.removeEventListener('seeked', handleSeeked)
             video.removeEventListener('error', handleError)
         }
-    }, [currentUrl, url])
+    }, [currentUrl, thumbnailUrl]) // Add thumbnailUrl to prevent unnecessary reloads
 
     return (
         <div
@@ -290,9 +307,9 @@ export default function BeforeAfterUpload({
                     </label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                         {mediaUrls.map((url, index) => (
-                            <div key={url} className="relative group aspect-square">
+                            <div key={`media-${url}-${index}`} className="relative group aspect-square">
                                 {(mediaFiles ? mediaFiles[index]?.type.startsWith('video/') : isVideo(url)) ? (
-                                    <VideoThumbnail url={url} onClick={() => onMediaClick?.(index)} />
+                                    <VideoThumbnail key={`video-${url}-${index}`} url={url} onClick={() => onMediaClick?.(index)} />
                                 ) : (
                                     <img
                                         src={url}
