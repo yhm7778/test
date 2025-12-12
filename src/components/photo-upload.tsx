@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 'use client'
 
-import { useState, useCallback, ChangeEvent, useRef, useEffect } from 'react'
+import { useState, useCallback, ChangeEvent, useRef, useEffect, memo } from 'react'
 import { Upload, X, ImageOff, RefreshCw, Play, FileVideo, Loader2 } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 import { getCachedSignedUrl, setCachedSignedUrl } from '@/utils/media-url-cache'
@@ -17,7 +17,7 @@ interface PhotoUploadProps {
 }
 
 // Internal component to handle individual media items with fallback logic
-const SupabaseMedia = ({
+const SupabaseMedia = memo(({
     url,
     alt,
     className,
@@ -33,7 +33,8 @@ const SupabaseMedia = ({
     const [currentUrl, setCurrentUrl] = useState(url)
     const [isDead, setIsDead] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
-    const supabase = createClient()
+    const supabaseRef = useRef(createClient())
+    const urlProcessedRef = useRef<string | null>(null)
 
     const isVideo = (path: string) => {
         return path.match(/\.(mp4|webm|ogg|mov|qt|avi|wmv|flv|m4v)(\?|$)/i)
@@ -57,7 +58,7 @@ const SupabaseMedia = ({
             if (match && match[1]) {
                 try {
                     const path = decodeURIComponent(match[1])
-                    const { data, error: signedError } = await supabase
+                    const { data, error: signedError } = await supabaseRef.current
                         .storage
                         .from('applications')
                         .createSignedUrl(path, 86400) // 24 hours
@@ -79,7 +80,7 @@ const SupabaseMedia = ({
         }
 
         generateSignedUrl()
-    }, [url, supabase])
+    }, [url]) // Remove supabase from dependencies
 
     const handleError = () => {
         console.error('Media load error', currentUrl)
@@ -120,10 +121,13 @@ const SupabaseMedia = ({
             />
         </div>
     )
-}
+}, (prevProps, nextProps) => {
+    // Only re-render if url changes
+    return prevProps.url === nextProps.url && prevProps.className === nextProps.className
+})
 
 // Video thumbnail component with canvas-based preview
-function VideoThumbnailMedia({ 
+const VideoThumbnailMedia = memo(function VideoThumbnailMedia({ 
     url, 
     className, 
     controls, 
@@ -138,10 +142,11 @@ function VideoThumbnailMedia({
 }) {
     const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(true)
-    const [currentUrl, setCurrentUrl] = useState(url)
+    const [currentUrl, setCurrentUrl] = useState<string | null>(null)
     const videoRef = useRef<HTMLVideoElement>(null)
     const canvasRef = useRef<HTMLCanvasElement>(null)
-    const supabase = createClient()
+    const supabaseRef = useRef(createClient())
+    const urlProcessedRef = useRef<string | null>(null)
 
     // Pre-generate signed URL on mount for better performance
     useEffect(() => {
@@ -158,7 +163,7 @@ function VideoThumbnailMedia({
             if (match && match[1]) {
                 try {
                     const path = decodeURIComponent(match[1])
-                    const { data, error: signedError } = await supabase.storage
+                    const { data, error: signedError } = await supabaseRef.current.storage
                         .from('applications')
                         .createSignedUrl(path, 86400) // 24 hours
 
@@ -178,7 +183,7 @@ function VideoThumbnailMedia({
         }
 
         generateSignedUrl()
-    }, [url, supabase])
+    }, [url]) // Remove supabase from dependencies
 
     useEffect(() => {
         const video = videoRef.current
@@ -225,7 +230,16 @@ function VideoThumbnailMedia({
             onError?.()
         }
 
-        video.src = currentUrl
+        // Don't reload if video src is already set to currentUrl
+        if (video.src && currentUrl && video.src === currentUrl && thumbnailUrl) {
+            return
+        }
+
+        // Only set src if it's different and currentUrl is not null
+        if (currentUrl && video.src !== currentUrl) {
+            video.src = currentUrl
+        }
+        
         video.addEventListener('loadeddata', handleLoadedData)
         video.addEventListener('seeked', handleSeeked)
         video.addEventListener('error', handleError)
@@ -235,9 +249,16 @@ function VideoThumbnailMedia({
             video.removeEventListener('seeked', handleSeeked)
             video.removeEventListener('error', handleError)
         }
-    }, [currentUrl, url, controls, onError])
+    }, [currentUrl, controls, thumbnailUrl]) // Remove url and onError from dependencies
 
     if (controls) {
+        if (!currentUrl) {
+            return (
+                <div className={`${className} bg-gray-800 flex items-center justify-center`}>
+                    <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                </div>
+            )
+        }
         return (
             <div className="relative w-full h-full flex items-center justify-center">
                 <video
@@ -287,7 +308,14 @@ function VideoThumbnailMedia({
             </div>
         </div>
     )
-}
+}, (prevProps, nextProps) => {
+    // Only re-render if url, className, or controls change (ignore onClick and onError changes)
+    return (
+        prevProps.url === nextProps.url &&
+        prevProps.className === nextProps.className &&
+        prevProps.controls === nextProps.controls
+    )
+})
 
 export default function PhotoUpload({ photos, setPhotos, initialUrls = [], readOnly = false, photosOnly = false, minFiles, maxFiles }: PhotoUploadProps) {
     const [isDragging, setIsDragging] = useState(false)
