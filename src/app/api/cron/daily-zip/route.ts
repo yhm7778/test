@@ -5,8 +5,6 @@ import { Resend } from 'resend'
 import { Database } from '@/types/supabase'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
-
 type ApplicationRow = Database['public']['Tables']['applications']['Row']
 
 export async function GET() {
@@ -59,6 +57,7 @@ export async function GET() {
         // Send Email
         // Note: Resend Free tier might have limits or require domain verification
         if (process.env.RESEND_API_KEY) {
+            const resend = new Resend(process.env.RESEND_API_KEY)
             await resend.emails.send({
                 from: 'Marketing App <onboarding@resend.dev>', // Use verified domain in prod
                 to: ['admin@example.com'], // Replace with actual admin email

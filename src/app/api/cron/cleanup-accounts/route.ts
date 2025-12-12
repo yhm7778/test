@@ -2,19 +2,23 @@ import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { Database } from '@/types/supabase'
 
-// Only run this with Service Role Key
-const supabaseAdmin = createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-        auth: {
-            autoRefreshToken: false,
-            persistSession: false
-        }
-    }
-)
-
 export async function GET(request: Request) {
+    // Check for required environment variables
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        return NextResponse.json({ error: 'Supabase configuration missing' }, { status: 500 })
+    }
+
+    // Only run this with Service Role Key
+    const supabaseAdmin = createClient<Database>(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY,
+        {
+            auth: {
+                autoRefreshToken: false,
+                persistSession: false
+            }
+        }
+    )
     // Basic auth check (e.g. Bearer token or just rely on Vercel Cron header if needed)
     // For now, we assume it's protected by environment or obscurity, or we can add a simple key check.
     const authHeader = request.headers.get('authorization')
