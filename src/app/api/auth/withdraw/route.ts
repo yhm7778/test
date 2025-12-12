@@ -12,8 +12,8 @@ export async function POST() {
             error,
         } = await supabase.auth.getUser();
         
-        // If refresh token is invalid/expired, treat as no user (normal case)
-        if (error && error.code === 'refresh_token_not_found') {
+        // If refresh token is invalid/expired or session is missing, treat as no user (normal case)
+        if (error && (error.code === 'refresh_token_not_found' || error.message === 'Auth session missing!')) {
             user = null;
         } else if (error) {
             // Log other auth errors but don't break the flow
