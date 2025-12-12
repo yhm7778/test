@@ -720,7 +720,7 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
             {viewingApp && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-y-auto">
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative">
-                        <div className="sticky top-0 bg-white z-10 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                        <div className="sticky top-0 bg-white z-10 px-6 py-4 border-b border-gray-100 flex justify-between items-center rounded-t-xl">
                             <h2 className="text-xl font-bold text-gray-900">신청서 상세 정보</h2>
                             <button
                                 onClick={() => setViewingApp(null)}
