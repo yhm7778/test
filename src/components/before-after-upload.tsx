@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Upload, X, Loader2, Image as ImageIcon, Video } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
+import { getCachedSignedUrl, setCachedSignedUrl } from '@/utils/media-url-cache'
 
 interface BeforeAfterUploadProps {
     type: 'before' | 'after'
@@ -25,15 +26,46 @@ function VideoThumbnail({ url, onClick }: { url: string; onClick: () => void }) 
     const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [currentUrl, setCurrentUrl] = useState(url)
-    const [isRetrying, setIsRetrying] = useState(false)
     const videoRef = useRef<HTMLVideoElement>(null)
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const supabase = createClient()
 
+    // Pre-generate signed URL on mount for better performance
     useEffect(() => {
-        setCurrentUrl(url)
-        setIsRetrying(false)
-    }, [url])
+        const generateSignedUrl = async () => {
+            // Check cache first
+            const cached = getCachedSignedUrl(url)
+            if (cached) {
+                setCurrentUrl(cached)
+                return
+            }
+
+            // Check if it's a Supabase public URL
+            const match = url.match(/\/storage\/v1\/object\/public\/applications\/(.+)$/)
+            if (match && match[1]) {
+                try {
+                    const path = decodeURIComponent(match[1])
+                    const { data, error: signedError } = await supabase.storage
+                        .from('applications')
+                        .createSignedUrl(path, 86400) // 24 hours
+
+                    if (!signedError && data?.signedUrl) {
+                        setCachedSignedUrl(url, data.signedUrl)
+                        setCurrentUrl(data.signedUrl)
+                    } else {
+                        setCurrentUrl(url)
+                    }
+                } catch (e) {
+                    console.error('Failed to generate signed URL:', e)
+                    setCurrentUrl(url)
+                }
+            } else {
+                setCurrentUrl(url)
+            }
+        }
+
+        generateSignedUrl()
+    }, [url, supabase])
 
     useEffect(() => {
         const video = videoRef.current
@@ -71,32 +103,8 @@ function VideoThumbnail({ url, onClick }: { url: string; onClick: () => void }) 
             generateThumbnail()
         }
 
-        const handleError = async () => {
-            if (isRetrying || currentUrl !== url) return
-            
-            setIsRetrying(true)
+        const handleError = () => {
             console.error('Video load error', currentUrl)
-
-            try {
-                const match = currentUrl.match(/\/storage\/v1\/object\/public\/applications\/(.+)$/)
-                if (match && match[1]) {
-                    const path = decodeURIComponent(match[1])
-                    const { data, error: signedError } = await supabase.storage
-                        .from('applications')
-                        .createSignedUrl(path, 3600)
-
-                    if (!signedError && data?.signedUrl) {
-                        console.log('Recovered video with signed URL')
-                        setCurrentUrl(data.signedUrl)
-                        setIsRetrying(false)
-                        return
-                    }
-                }
-            } catch (e) {
-                console.error('Failed to recover video:', e)
-            }
-
-            setIsRetrying(false)
             setIsLoading(false)
         }
 
@@ -110,7 +118,7 @@ function VideoThumbnail({ url, onClick }: { url: string; onClick: () => void }) 
             video.removeEventListener('seeked', handleSeeked)
             video.removeEventListener('error', handleError)
         }
-    }, [currentUrl, url, isRetrying])
+    }, [currentUrl, url])
 
     return (
         <div

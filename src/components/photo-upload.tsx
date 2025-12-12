@@ -4,6 +4,7 @@
 import { useState, useCallback, ChangeEvent, useRef, useEffect } from 'react'
 import { Upload, X, ImageOff, RefreshCw, Play, FileVideo, Loader2 } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
+import { getCachedSignedUrl, setCachedSignedUrl } from '@/utils/media-url-cache'
 
 interface PhotoUploadProps {
     photos: File[]
@@ -30,8 +31,8 @@ const SupabaseMedia = ({
     controls?: boolean
 }) => {
     const [currentUrl, setCurrentUrl] = useState(url)
-    const [isRetrying, setIsRetrying] = useState(false)
     const [isDead, setIsDead] = useState(false)
+    const [isLoading, setIsLoading] = useState(true)
     const supabase = createClient()
 
     const isVideo = (path: string) => {
@@ -40,43 +41,57 @@ const SupabaseMedia = ({
 
     const mediaType = isVideo(url) ? 'video' : 'image'
 
-    const handleError = async () => {
-        if (isRetrying || isDead || currentUrl !== url) return
+    // Pre-generate signed URL on mount for better performance
+    useEffect(() => {
+        const generateSignedUrl = async () => {
+            // Check cache first
+            const cached = getCachedSignedUrl(url)
+            if (cached) {
+                setCurrentUrl(cached)
+                setIsLoading(false)
+                return
+            }
 
-        setIsRetrying(true)
-
-        try {
-            // Try to extract path from Supabase Public URL
-            // Format example: .../storage/v1/object/public/applications/folder/file.jpg
+            // Check if it's a Supabase public URL
             const match = url.match(/\/storage\/v1\/object\/public\/applications\/(.+)$/)
-
             if (match && match[1]) {
-                const path = decodeURIComponent(match[1])
-                console.log(`Attempting to recover media: ${path}`)
+                try {
+                    const path = decodeURIComponent(match[1])
+                    const { data, error: signedError } = await supabase
+                        .storage
+                        .from('applications')
+                        .createSignedUrl(path, 86400) // 24 hours
 
-                const { data, error: signedError } = await supabase
-                    .storage
-                    .from('applications')
-                    .createSignedUrl(path, 3600) // 1 hour validity
-
-                if (!signedError && data?.signedUrl) {
-                    console.log('Recovered with signed URL')
-                    setCurrentUrl(data.signedUrl)
-                    setIsRetrying(false)
-                    return
-                } else {
-                    console.error('Failed to get signed URL:', signedError)
+                    if (!signedError && data?.signedUrl) {
+                        setCachedSignedUrl(url, data.signedUrl)
+                        setCurrentUrl(data.signedUrl)
+                    } else {
+                        setCurrentUrl(url)
+                    }
+                } catch (e) {
+                    console.error('Failed to generate signed URL:', e)
+                    setCurrentUrl(url)
                 }
             } else {
-                console.warn('URL does not match expected Supabase pattern:', url)
+                setCurrentUrl(url)
             }
-        } catch (e) {
-            console.error("Failed to recover media:", e)
+            setIsLoading(false)
         }
 
-        // If we reach here, recovery failed
-        setIsRetrying(false)
+        generateSignedUrl()
+    }, [url, supabase])
+
+    const handleError = () => {
+        console.error('Media load error', currentUrl)
         setIsDead(true)
+    }
+
+    if (isLoading) {
+        return (
+            <div className={`flex items-center justify-center bg-gray-100 ${className}`}>
+                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+            </div>
+        )
     }
 
     if (isDead) {
@@ -99,15 +114,11 @@ const SupabaseMedia = ({
             <img
                 src={currentUrl}
                 alt={alt || 'Image'}
-                className={`${className} ${isRetrying ? 'opacity-50' : ''}`}
+                className={className}
                 onClick={onClick}
                 onError={handleError}
+                loading="lazy"
             />
-            {isRetrying && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                    <RefreshCw className="h-6 w-6 animate-spin text-blue-500" />
-                </div>
-            )}
         </div>
     )
 }
@@ -129,15 +140,46 @@ function VideoThumbnailMedia({
     const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [currentUrl, setCurrentUrl] = useState(url)
-    const [isRetrying, setIsRetrying] = useState(false)
     const videoRef = useRef<HTMLVideoElement>(null)
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const supabase = createClient()
 
+    // Pre-generate signed URL on mount for better performance
     useEffect(() => {
-        setCurrentUrl(url)
-        setIsRetrying(false)
-    }, [url])
+        const generateSignedUrl = async () => {
+            // Check cache first
+            const cached = getCachedSignedUrl(url)
+            if (cached) {
+                setCurrentUrl(cached)
+                return
+            }
+
+            // Check if it's a Supabase public URL
+            const match = url.match(/\/storage\/v1\/object\/public\/applications\/(.+)$/)
+            if (match && match[1]) {
+                try {
+                    const path = decodeURIComponent(match[1])
+                    const { data, error: signedError } = await supabase.storage
+                        .from('applications')
+                        .createSignedUrl(path, 86400) // 24 hours
+
+                    if (!signedError && data?.signedUrl) {
+                        setCachedSignedUrl(url, data.signedUrl)
+                        setCurrentUrl(data.signedUrl)
+                    } else {
+                        setCurrentUrl(url)
+                    }
+                } catch (e) {
+                    console.error('Failed to generate signed URL:', e)
+                    setCurrentUrl(url)
+                }
+            } else {
+                setCurrentUrl(url)
+            }
+        }
+
+        generateSignedUrl()
+    }, [url, supabase])
 
     useEffect(() => {
         const video = videoRef.current
@@ -178,32 +220,8 @@ function VideoThumbnailMedia({
             generateThumbnail()
         }
 
-        const handleError = async () => {
-            if (isRetrying || currentUrl !== url) return
-            
-            setIsRetrying(true)
+        const handleError = () => {
             console.error('Video load error', currentUrl)
-
-            try {
-                const match = currentUrl.match(/\/storage\/v1\/object\/public\/applications\/(.+)$/)
-                if (match && match[1]) {
-                    const path = decodeURIComponent(match[1])
-                    const { data, error: signedError } = await supabase.storage
-                        .from('applications')
-                        .createSignedUrl(path, 3600)
-
-                    if (!signedError && data?.signedUrl) {
-                        console.log('Recovered video with signed URL')
-                        setCurrentUrl(data.signedUrl)
-                        setIsRetrying(false)
-                        return
-                    }
-                }
-            } catch (e) {
-                console.error('Failed to recover video:', e)
-            }
-
-            setIsRetrying(false)
             setIsLoading(false)
             onError?.()
         }
@@ -218,7 +236,7 @@ function VideoThumbnailMedia({
             video.removeEventListener('seeked', handleSeeked)
             video.removeEventListener('error', handleError)
         }
-    }, [currentUrl, url, controls, isRetrying, onError])
+    }, [currentUrl, url, controls, onError])
 
     if (controls) {
         return (

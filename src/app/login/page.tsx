@@ -1,19 +1,23 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { Loader2 } from 'lucide-react'
 
 import { signIn, signUp } from '@/app/actions/auth'
 
-export default function LoginPage() {
+function LoginForm() {
     const [username, setUsername] = useState('')
     const [password, setPassword] = useState('')
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const router = useRouter()
+    const searchParams = useSearchParams()
     const supabase = createClient()
+
+    // Get redirect path from query parameter
+    const redirectPath = searchParams.get('redirect') || '/'
 
     // Redirect if already logged in - only check once on mount
     useEffect(() => {
@@ -22,7 +26,7 @@ export default function LoginPage() {
             try {
                 const { data: { user } } = await supabase.auth.getUser()
                 if (mounted && user) {
-                    router.replace('/')
+                    router.replace(redirectPath)
                 }
             } catch (error) {
                 // Ignore errors during check
@@ -30,7 +34,7 @@ export default function LoginPage() {
         }
         checkUser()
         return () => { mounted = false }
-    }, []) // Empty deps - only run once
+    }, [redirectPath, router]) // Include redirectPath and router in deps
 
     const getKoreanErrorMessage = (message: string) => {
         if (/[가-힣]/.test(message)) return message
@@ -53,8 +57,8 @@ export default function LoginPage() {
             if (result.error) throw new Error(result.error)
 
             // Use hard navigation to ensure fresh state and cookies are applied immediately
-            // This is faster and more reliable than router.refresh() + replace() for auth state changes
-            window.location.href = '/'
+            // Redirect to the original destination or home page
+            window.location.href = redirectPath
         } catch (error: unknown) {
             const message = error instanceof Error ? error.message : 'Unknown error'
             setError(getKoreanErrorMessage(message))
@@ -74,7 +78,8 @@ export default function LoginPage() {
             alert('회원가입이 완료되었습니다.')
 
             // Use hard navigation for immediate state update
-            window.location.href = '/'
+            // Redirect to the original destination or home page
+            window.location.href = redirectPath
         } catch (error: unknown) {
             const message = error instanceof Error ? error.message : 'Unknown error'
             setError(getKoreanErrorMessage(message))
@@ -157,5 +162,21 @@ export default function LoginPage() {
                 </form>
             </div>
         </div>
+    )
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex flex-col items-center justify-center py-12 sm:py-20">
+                <div className="w-full max-w-md mx-auto space-y-8 p-6 sm:p-8 bg-white rounded-xl shadow-lg border border-gray-200">
+                    <div className="flex justify-center">
+                        <Loader2 className="animate-spin h-8 w-8 text-gray-400" />
+                    </div>
+                </div>
+            </div>
+        }>
+            <LoginForm />
+        </Suspense>
     )
 }

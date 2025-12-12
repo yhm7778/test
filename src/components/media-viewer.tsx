@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
+import { getCachedSignedUrl, setCachedSignedUrl } from '@/utils/media-url-cache'
 
 interface MediaViewerProps {
     mediaUrls: string[]
@@ -14,8 +15,54 @@ interface MediaViewerProps {
 export default function MediaViewer({ mediaUrls, initialIndex, onClose, mediaTypes }: MediaViewerProps) {
     const [currentIndex, setCurrentIndex] = useState(initialIndex)
     const [currentUrl, setCurrentUrl] = useState<string>(mediaUrls[initialIndex] || '')
-    const [isRetrying, setIsRetrying] = useState(false)
+    const [urlCache, setUrlCache] = useState<Map<string, string>>(new Map())
     const supabase = createClient()
+
+    // Pre-generate signed URLs for all media items
+    useEffect(() => {
+        const generateSignedUrls = async () => {
+            const newCache = new Map<string, string>()
+            
+            for (const url of mediaUrls) {
+                // Check existing cache first
+                const cached = getCachedSignedUrl(url)
+                if (cached) {
+                    newCache.set(url, cached)
+                    continue
+                }
+
+                // Check if it's a Supabase public URL
+                const match = url.match(/\/storage\/v1\/object\/public\/applications\/(.+)$/)
+                if (match && match[1]) {
+                    try {
+                        const path = decodeURIComponent(match[1])
+                        const { data, error: signedError } = await supabase.storage
+                            .from('applications')
+                            .createSignedUrl(path, 86400) // 24 hours
+
+                        if (!signedError && data?.signedUrl) {
+                            setCachedSignedUrl(url, data.signedUrl)
+                            newCache.set(url, data.signedUrl)
+                        } else {
+                            newCache.set(url, url)
+                        }
+                    } catch (e) {
+                        console.error('Failed to generate signed URL:', e)
+                        newCache.set(url, url)
+                    }
+                } else {
+                    newCache.set(url, url)
+                }
+            }
+            
+            setUrlCache(newCache)
+            // Set initial URL
+            const initialUrl = newCache.get(mediaUrls[initialIndex] || '') || mediaUrls[initialIndex] || ''
+            setCurrentUrl(initialUrl)
+        }
+
+        generateSignedUrls()
+    }, [mediaUrls, initialIndex, supabase])
 
     // ESC 키로 닫기
     useEffect(() => {
@@ -38,9 +85,10 @@ export default function MediaViewer({ mediaUrls, initialIndex, onClose, mediaTyp
 
     // URL이 변경될 때마다 currentUrl 업데이트
     useEffect(() => {
-        setCurrentUrl(mediaUrls[currentIndex] || '')
-        setIsRetrying(false)
-    }, [currentIndex, mediaUrls])
+        const url = mediaUrls[currentIndex] || ''
+        const cachedUrl = urlCache.get(url) || url
+        setCurrentUrl(cachedUrl)
+    }, [currentIndex, mediaUrls, urlCache])
 
     const handlePrev = () => {
         setCurrentIndex((prev) => (prev > 0 ? prev - 1 : mediaUrls.length - 1))
@@ -50,33 +98,10 @@ export default function MediaViewer({ mediaUrls, initialIndex, onClose, mediaTyp
         setCurrentIndex((prev) => (prev < mediaUrls.length - 1 ? prev + 1 : 0))
     }
 
-    const handleMediaError = async () => {
-        if (isRetrying) return
-        
-        setIsRetrying(true)
+    const handleMediaError = () => {
         const originalUrl = mediaUrls[currentIndex]
         console.error('Media load error', originalUrl)
-
-        try {
-            const match = originalUrl.match(/\/storage\/v1\/object\/public\/applications\/(.+)$/)
-            if (match && match[1]) {
-                const path = decodeURIComponent(match[1])
-                const { data, error: signedError } = await supabase.storage
-                    .from('applications')
-                    .createSignedUrl(path, 3600)
-
-                if (!signedError && data?.signedUrl) {
-                    console.log('Recovered media with signed URL')
-                    setCurrentUrl(data.signedUrl)
-                    setIsRetrying(false)
-                    return
-                }
-            }
-        } catch (e) {
-            console.error('Failed to recover media:', e)
-        }
-
-        setIsRetrying(false)
+        // Signed URL should already be set, so this is a real error
     }
 
     const isVideo = currentUrl?.match(/\.(mp4|webm|ogg|mov|qt|avi|wmv|flv|m4v)(\?|$)/i)
