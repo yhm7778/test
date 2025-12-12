@@ -78,6 +78,8 @@ function VideoThumbnail({ url, onClick }: { url: string; onClick: () => void }) 
         }
     }, [url])
 
+
+
     return (
         <div
             className="relative w-full h-full bg-gray-900 rounded-lg overflow-hidden cursor-pointer group"
@@ -91,8 +93,9 @@ function VideoThumbnail({ url, onClick }: { url: string; onClick: () => void }) 
                 src={url}
                 className="hidden"
                 muted
-                preload="metadata"
+                preload="auto"
                 playsInline
+                crossOrigin="anonymous"
             />
             <canvas ref={canvasRef} className="hidden" />
             {thumbnailUrl ? (
@@ -113,6 +116,44 @@ function VideoThumbnail({ url, onClick }: { url: string; onClick: () => void }) 
             <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-colors pointer-events-none">
                 <Video className="w-12 h-12 text-white" />
             </div>
+        </div>
+    )
+}
+
+function MediaItem({
+    url,
+    index,
+    explicitType,
+    onClick
+}: {
+    url: string
+    index: number
+    explicitType?: string
+    onClick: () => void
+}) {
+    // If it looks like an image, try image first. If it fails, fallback to video.
+    // If explicitly video or looks like video, strict video.
+    const initialIsVideo = explicitType === 'video' || (!explicitType && !isImage(url))
+    const [renderAsVideo, setRenderAsVideo] = useState(initialIsVideo)
+
+    return (
+        <div
+            className="relative aspect-square cursor-pointer group"
+            onClick={onClick}
+        >
+            {renderAsVideo ? (
+                <VideoThumbnail url={url} onClick={onClick} />
+            ) : (
+                <img
+                    src={url}
+                    alt={`미디어 ${index + 1}`}
+                    className="w-full h-full object-cover rounded-lg group-hover:opacity-90 transition-opacity"
+                    onError={() => {
+                        console.log('Image load failed, switching to video fallback', url)
+                        setRenderAsVideo(true)
+                    }}
+                />
+            )}
         </div>
     )
 }
@@ -195,21 +236,13 @@ export default function BeforeAfterComparison({
                                 </h3>
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                                     {beforeMediaUrls.map((url, index) => (
-                                        <div
+                                        <MediaItem
                                             key={url}
-                                            className="relative aspect-square cursor-pointer group"
+                                            url={url}
+                                            index={index}
+                                            explicitType={beforeMediaTypes?.[index]}
                                             onClick={() => openViewer(beforeMediaUrls, index)}
-                                        >
-                                            {(beforeMediaTypes ? beforeMediaTypes[index] === 'video' : !isImage(url)) ? (
-                                                <VideoThumbnail url={url} onClick={() => openViewer(beforeMediaUrls, index)} />
-                                            ) : (
-                                                <img
-                                                    src={url}
-                                                    alt={`작업 전 ${index + 1}`}
-                                                    className="w-full h-full object-cover rounded-lg group-hover:opacity-90 transition-opacity"
-                                                />
-                                            )}
-                                        </div>
+                                        />
                                     ))}
                                 </div>
                             </div>
@@ -233,21 +266,13 @@ export default function BeforeAfterComparison({
                                 </h3>
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                                     {afterMediaUrls.map((url, index) => (
-                                        <div
+                                        <MediaItem
                                             key={url}
-                                            className="relative aspect-square cursor-pointer group"
+                                            url={url}
+                                            index={index}
+                                            explicitType={afterMediaTypes?.[index]}
                                             onClick={() => openViewer(afterMediaUrls, index)}
-                                        >
-                                            {(afterMediaTypes ? afterMediaTypes[index] === 'video' : !isImage(url)) ? (
-                                                <VideoThumbnail url={url} onClick={() => openViewer(afterMediaUrls, index)} />
-                                            ) : (
-                                                <img
-                                                    src={url}
-                                                    alt={`작업 후 ${index + 1}`}
-                                                    className="w-full h-full object-cover rounded-lg group-hover:opacity-90 transition-opacity"
-                                                />
-                                            )}
-                                        </div>
+                                        />
                                     ))}
                                 </div>
                             </div>
