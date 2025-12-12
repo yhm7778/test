@@ -43,12 +43,26 @@ export async function updateSession(request: NextRequest) {
         }
     )
 
-    // Get user session
-    const {
-        data: { user },
-    } = await supabase.auth.getUser()
-
     const path = request.nextUrl.pathname
+
+    // Skip auth check for static files and API routes (except protected ones)
+    const isStaticFile = path.match(/\.(ico|png|jpg|jpeg|gif|svg|css|js|woff|woff2|ttf|eot)$/i)
+    const isApiRoute = path.startsWith('/api/')
+    const isPublicApiRoute = isApiRoute && !path.startsWith('/api/auth/') && !path.startsWith('/api/staff/')
+
+    // Only check auth for routes that need it
+    const protectedRoutes = ['/admin', '/my', '/apply']
+    const isProtectedRoute = protectedRoutes.some(route => path.startsWith(route))
+    const needsAuthCheck = isProtectedRoute || path === '/login' || path.startsWith('/admin')
+
+    let user = null
+    if (needsAuthCheck && !isStaticFile && !isPublicApiRoute) {
+        // Get user session only when needed
+        const {
+            data: { user: authUser },
+        } = await supabase.auth.getUser()
+        user = authUser
+    }
 
     // Prevent showing login page to already authenticated users
     if (path === '/login' && user) {
@@ -58,10 +72,6 @@ export async function updateSession(request: NextRequest) {
     }
 
     // Protected routes - require authentication
-    // Added '/apply' as requested
-    const protectedRoutes = ['/admin', '/my', '/apply']
-    const isProtectedRoute = protectedRoutes.some(route => path.startsWith(route))
-
     if (isProtectedRoute && !user) {
         // Redirect to login if not authenticated
         const redirectUrl = request.nextUrl.clone()
@@ -70,7 +80,7 @@ export async function updateSession(request: NextRequest) {
         return NextResponse.redirect(redirectUrl)
     }
 
-    // Admin-only routes
+    // Admin-only routes - only check if user exists and path is admin
     if (path.startsWith('/admin') && user) {
         const { data: profile } = await supabase
             .from('profiles')

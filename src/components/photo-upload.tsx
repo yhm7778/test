@@ -101,6 +101,20 @@ const SupabaseMedia = ({
                     onError={handleError}
                     preload="metadata"
                     playsInline
+                    muted
+                    onLoadedMetadata={(e) => {
+                        // Seek to 0.1s for thumbnail
+                        const video = e.currentTarget
+                        if (!controls && video.duration > 0.1) {
+                            video.currentTime = 0.1
+                        }
+                    }}
+                    onSeeked={(e) => {
+                        // Pause after seeking to show thumbnail
+                        if (!controls) {
+                            e.currentTarget.pause()
+                        }
+                    }}
                 />
                 {!controls && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none">

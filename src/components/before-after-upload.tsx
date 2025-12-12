@@ -156,13 +156,24 @@ export default function BeforeAfterUpload({
                                         onClick={() => onMediaClick?.(index)}
                                     >
                                         <video
-                                            src={`${url}#t=0.1`}
-                                            className="w-full h-full object-cover opacity-80"
+                                            src={url}
+                                            className="w-full h-full object-cover"
                                             muted
                                             preload="metadata"
                                             playsInline
+                                            onLoadedMetadata={(e) => {
+                                                // Seek to 0.1s for thumbnail
+                                                const video = e.currentTarget
+                                                if (video.duration > 0.1) {
+                                                    video.currentTime = 0.1
+                                                }
+                                            }}
+                                            onSeeked={(e) => {
+                                                // Pause after seeking to show thumbnail
+                                                e.currentTarget.pause()
+                                            }}
                                         />
-                                        <div className="absolute inset-0 flex items-center justify-center">
+                                        <div className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none">
                                             <div className="bg-black/40 rounded-full p-2 backdrop-blur-sm">
                                                 <Video className="w-8 h-8 text-white" />
                                             </div>

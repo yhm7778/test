@@ -15,16 +15,22 @@ export default function LoginPage() {
     const router = useRouter()
     const supabase = createClient()
 
-    // Redirect if already logged in
+    // Redirect if already logged in - only check once on mount
     useEffect(() => {
+        let mounted = true
         const checkUser = async () => {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (user) {
-                router.replace('/')
+            try {
+                const { data: { user } } = await supabase.auth.getUser()
+                if (mounted && user) {
+                    router.replace('/')
+                }
+            } catch (error) {
+                // Ignore errors during check
             }
         }
         checkUser()
-    }, [router, supabase])
+        return () => { mounted = false }
+    }, []) // Empty deps - only run once
 
     const getKoreanErrorMessage = (message: string) => {
         if (/[가-힣]/.test(message)) return message

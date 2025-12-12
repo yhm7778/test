@@ -84,7 +84,7 @@ export default function MediaViewer({ mediaUrls, initialIndex, onClose }: MediaV
 
             {/* Media Content */}
             <div
-                className="max-w-7xl max-h-[90vh] w-full h-full flex items-center justify-center p-4"
+                className="w-[95vw] h-[95vh] flex items-center justify-center p-4"
                 onClick={(e) => e.stopPropagation()}
             >
                 {isVideo ? (
@@ -92,13 +92,13 @@ export default function MediaViewer({ mediaUrls, initialIndex, onClose }: MediaV
                         src={currentUrl}
                         controls
                         autoPlay
-                        className="max-w-full max-h-full rounded-lg shadow-2xl"
+                        className="max-w-full max-h-full w-auto h-auto rounded-lg shadow-2xl"
                     />
                 ) : (
                     <img
                         src={currentUrl}
                         alt={`미디어 ${currentIndex + 1}`}
-                        className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+                        className="max-w-full max-h-full w-auto h-auto object-contain rounded-lg shadow-2xl"
                     />
                 )}
             </div>
