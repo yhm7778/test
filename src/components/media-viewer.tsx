@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { createClient } from '@/utils/supabase/client'
 
 interface MediaViewerProps {
     mediaUrls: string[]
@@ -12,6 +13,9 @@ interface MediaViewerProps {
 
 export default function MediaViewer({ mediaUrls, initialIndex, onClose, mediaTypes }: MediaViewerProps) {
     const [currentIndex, setCurrentIndex] = useState(initialIndex)
+    const [currentUrl, setCurrentUrl] = useState<string>(mediaUrls[initialIndex] || '')
+    const [isRetrying, setIsRetrying] = useState(false)
+    const supabase = createClient()
 
     // ESC 키로 닫기
     useEffect(() => {
@@ -32,6 +36,12 @@ export default function MediaViewer({ mediaUrls, initialIndex, onClose, mediaTyp
         return () => window.removeEventListener('keydown', handleArrow)
     }, [currentIndex])
 
+    // URL이 변경될 때마다 currentUrl 업데이트
+    useEffect(() => {
+        setCurrentUrl(mediaUrls[currentIndex] || '')
+        setIsRetrying(false)
+    }, [currentIndex, mediaUrls])
+
     const handlePrev = () => {
         setCurrentIndex((prev) => (prev > 0 ? prev - 1 : mediaUrls.length - 1))
     }
@@ -40,7 +50,35 @@ export default function MediaViewer({ mediaUrls, initialIndex, onClose, mediaTyp
         setCurrentIndex((prev) => (prev < mediaUrls.length - 1 ? prev + 1 : 0))
     }
 
-    const currentUrl = mediaUrls[currentIndex]
+    const handleMediaError = async () => {
+        if (isRetrying) return
+        
+        setIsRetrying(true)
+        const originalUrl = mediaUrls[currentIndex]
+        console.error('Media load error', originalUrl)
+
+        try {
+            const match = originalUrl.match(/\/storage\/v1\/object\/public\/applications\/(.+)$/)
+            if (match && match[1]) {
+                const path = decodeURIComponent(match[1])
+                const { data, error: signedError } = await supabase.storage
+                    .from('applications')
+                    .createSignedUrl(path, 3600)
+
+                if (!signedError && data?.signedUrl) {
+                    console.log('Recovered media with signed URL')
+                    setCurrentUrl(data.signedUrl)
+                    setIsRetrying(false)
+                    return
+                }
+            }
+        } catch (e) {
+            console.error('Failed to recover media:', e)
+        }
+
+        setIsRetrying(false)
+    }
+
     const isVideo = currentUrl?.match(/\.(mp4|webm|ogg|mov|qt|avi|wmv|flv|m4v)(\?|$)/i)
 
     return (
@@ -90,6 +128,7 @@ export default function MediaViewer({ mediaUrls, initialIndex, onClose, mediaTyp
             >
                 {(mediaTypes ? mediaTypes[currentIndex] === 'video' : isVideo) ? (
                     <video
+                        key={currentUrl}
                         src={currentUrl}
                         controls
                         autoPlay
@@ -97,13 +136,16 @@ export default function MediaViewer({ mediaUrls, initialIndex, onClose, mediaTyp
                         playsInline
                         className="max-w-[95vw] max-h-[95vh] w-auto h-auto rounded-lg shadow-2xl"
                         style={{ maxWidth: '95vw', maxHeight: '95vh' }}
+                        onError={handleMediaError}
                     />
                 ) : (
                     <img
+                        key={currentUrl}
                         src={currentUrl}
                         alt={`미디어 ${currentIndex + 1}`}
                         className="max-w-[95vw] max-h-[95vh] w-auto h-auto rounded-lg shadow-2xl"
                         style={{ maxWidth: '95vw', maxHeight: '95vh' }}
+                        onError={handleMediaError}
                     />
                 )}
             </div>

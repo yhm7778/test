@@ -175,9 +175,55 @@ function MediaItem({
     const initialIsVideo = isExplicitlyVideo || (!isExplicitlyImage && !isImage(url))
     const [renderAsVideo, setRenderAsVideo] = useState(initialIsVideo)
     const [hasError, setHasError] = useState(false)
+    const [currentUrl, setCurrentUrl] = useState(url)
+    const [isRetrying, setIsRetrying] = useState(false)
+    const supabase = createClient()
 
     // Don't allow fallback if explicit type is provided
     const allowFallback = !explicitType
+
+    // Update currentUrl when url prop changes
+    useEffect(() => {
+        setCurrentUrl(url)
+        setIsRetrying(false)
+    }, [url])
+
+    const handleImageError = async () => {
+        if (isRetrying) return
+
+        setIsRetrying(true)
+        console.error('Image load error', currentUrl)
+
+        try {
+            const match = currentUrl.match(/\/storage\/v1\/object\/public\/applications\/(.+)$/)
+            if (match && match[1]) {
+                const path = decodeURIComponent(match[1])
+                const { data, error: signedError } = await supabase.storage
+                    .from('applications')
+                    .createSignedUrl(path, 3600)
+
+                if (!signedError && data?.signedUrl) {
+                    console.log('Recovered image with signed URL')
+                    setCurrentUrl(data.signedUrl)
+                    setIsRetrying(false)
+                    return
+                }
+            }
+        } catch (e) {
+            console.error('Failed to recover image:', e)
+        }
+
+        setIsRetrying(false)
+
+        // If signed URL also failed, try fallback if allowed
+        if (allowFallback && !hasError) {
+            console.log('Image load failed, switching to video fallback', currentUrl)
+            setHasError(true)
+            setRenderAsVideo(true)
+        } else {
+            console.error('Image load failed and fallback not allowed or already tried', currentUrl)
+        }
+    }
 
     return (
         <div
@@ -185,21 +231,14 @@ function MediaItem({
             onClick={onClick}
         >
             {renderAsVideo ? (
-                <VideoThumbnail url={url} onClick={onClick} />
+                <VideoThumbnail url={currentUrl} onClick={onClick} />
             ) : (
                 <img
-                    src={url}
+                    key={currentUrl}
+                    src={currentUrl}
                     alt={`미디어 ${index + 1}`}
                     className="w-full h-full object-cover rounded-lg group-hover:opacity-90 transition-opacity"
-                    onError={() => {
-                        if (allowFallback && !hasError) {
-                            console.log('Image load failed, switching to video fallback', url)
-                            setHasError(true)
-                            setRenderAsVideo(true)
-                        } else {
-                            console.error('Image load failed and fallback not allowed or already tried', url)
-                        }
-                    }}
+                    onError={handleImageError}
                 />
             )}
         </div>
