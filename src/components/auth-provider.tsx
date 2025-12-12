@@ -193,7 +193,7 @@ export function AuthProvider({
             await hydrateSession(session)
 
             if (event === 'SIGNED_OUT') {
-                router.push('/')
+                router.push('/login')
                 router.refresh()
             }
         })
@@ -228,8 +228,8 @@ export function AuthProvider({
         } catch (error) {
             console.error('Logout failed', error)
         } finally {
-            // Hard navigation for fastest state reset
-            window.location.href = '/'
+            // Hard navigation to login page for fastest state reset
+            window.location.href = '/login'
         }
     }
 
