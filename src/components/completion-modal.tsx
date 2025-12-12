@@ -151,6 +151,7 @@ export default function CompletionModal({
                                         setViewerOpen(true)
                                     }}
                                     uploading={submitting}
+                                    mediaFiles={beforeMediaFiles}
                                 />
                             </div>
 
@@ -174,6 +175,7 @@ export default function CompletionModal({
                                         setViewerOpen(true)
                                     }}
                                     uploading={submitting}
+                                    mediaFiles={afterMediaFiles}
                                 />
                             </div>
                         </div>
@@ -229,6 +231,11 @@ export default function CompletionModal({
                     mediaUrls={viewerUrls}
                     initialIndex={viewerIndex}
                     onClose={() => setViewerOpen(false)}
+                    mediaTypes={
+                        viewerUrls === beforeMediaPreviews
+                            ? beforeMediaFiles.map(f => f.type.startsWith('video/') ? 'video' : 'image')
+                            : afterMediaFiles.map(f => f.type.startsWith('video/') ? 'video' : 'image')
+                    }
                 />
             )}
         </>

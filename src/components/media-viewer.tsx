@@ -7,9 +7,10 @@ interface MediaViewerProps {
     mediaUrls: string[]
     initialIndex: number
     onClose: () => void
+    mediaTypes?: string[]
 }
 
-export default function MediaViewer({ mediaUrls, initialIndex, onClose }: MediaViewerProps) {
+export default function MediaViewer({ mediaUrls, initialIndex, onClose, mediaTypes }: MediaViewerProps) {
     const [currentIndex, setCurrentIndex] = useState(initialIndex)
 
     // ESC 키로 닫기
@@ -87,11 +88,13 @@ export default function MediaViewer({ mediaUrls, initialIndex, onClose }: MediaV
                 className="w-full h-full flex items-center justify-center p-4"
                 onClick={(e) => e.stopPropagation()}
             >
-                {isVideo ? (
+                {(mediaTypes ? mediaTypes[currentIndex] === 'video' : isVideo) ? (
                     <video
                         src={currentUrl}
                         controls
                         autoPlay
+                        muted
+                        playsInline
                         className="max-w-[95vw] max-h-[95vh] w-auto h-auto rounded-lg shadow-2xl"
                         style={{ maxWidth: '95vw', maxHeight: '95vh' }}
                     />
@@ -99,8 +102,8 @@ export default function MediaViewer({ mediaUrls, initialIndex, onClose }: MediaV
                     <img
                         src={currentUrl}
                         alt={`미디어 ${currentIndex + 1}`}
-                        className="max-w-[95vw] max-h-[95vh] w-auto h-auto object-contain rounded-lg shadow-2xl"
-                        style={{ maxWidth: '95vw', maxHeight: '95vh', width: 'auto', height: 'auto' }}
+                        className="max-w-[95vw] max-h-[95vh] w-full h-full object-contain rounded-lg shadow-2xl"
+                        style={{ maxWidth: '95vw', maxHeight: '95vh' }}
                     />
                 )}
             </div>

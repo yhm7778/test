@@ -13,6 +13,7 @@ interface BeforeAfterUploadProps {
     onMediaClick?: (index: number) => void
     readOnly?: boolean
     uploading?: boolean
+    mediaFiles?: File[]
 }
 
 // Helper function to check if URL is a video
@@ -117,7 +118,8 @@ export default function BeforeAfterUpload({
     onMediaRemove,
     onMediaClick,
     readOnly = false,
-    uploading = false
+    uploading = false,
+    mediaFiles
 }: BeforeAfterUploadProps) {
     const [dragActive, setDragActive] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
@@ -241,7 +243,7 @@ export default function BeforeAfterUpload({
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                         {mediaUrls.map((url, index) => (
                             <div key={url} className="relative group aspect-square">
-                                {isVideo(url) ? (
+                                {(mediaFiles ? mediaFiles[index]?.type.startsWith('video/') : isVideo(url)) ? (
                                     <VideoThumbnail url={url} onClick={() => onMediaClick?.(index)} />
                                 ) : (
                                     <img
