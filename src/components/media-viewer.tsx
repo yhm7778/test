@@ -102,7 +102,7 @@ export default function MediaViewer({ mediaUrls, initialIndex, onClose, mediaTyp
                     <img
                         src={currentUrl}
                         alt={`미디어 ${currentIndex + 1}`}
-                        className="max-w-[95vw] max-h-[95vh] w-full h-full object-contain rounded-lg shadow-2xl"
+                        className="max-w-[95vw] max-h-[95vh] w-auto h-auto rounded-lg shadow-2xl"
                         style={{ maxWidth: '95vw', maxHeight: '95vh' }}
                     />
                 )}
