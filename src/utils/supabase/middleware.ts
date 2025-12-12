@@ -58,10 +58,27 @@ export async function updateSession(request: NextRequest) {
     let user = null
     if (needsAuthCheck && !isStaticFile && !isPublicApiRoute) {
         // Get user session only when needed
-        const {
-            data: { user: authUser },
-        } = await supabase.auth.getUser()
-        user = authUser
+        try {
+            const {
+                data: { user: authUser },
+                error,
+            } = await supabase.auth.getUser()
+            
+            // If refresh token is invalid/expired, treat as no user (normal case)
+            if (error && error.code === 'refresh_token_not_found') {
+                user = null
+            } else if (error) {
+                // Log other auth errors but don't break the flow
+                console.warn('Auth error in middleware:', error.message)
+                user = null
+            } else {
+                user = authUser
+            }
+        } catch (error) {
+            // Handle any unexpected errors gracefully
+            console.warn('Unexpected error getting user in middleware:', error)
+            user = null
+        }
     }
 
     // Prevent showing login page to already authenticated users
