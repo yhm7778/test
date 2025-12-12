@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { Image as ImageIcon, Video, Loader2 } from 'lucide-react'
+import { createClient } from '@/utils/supabase/client'
 import MediaViewer from './media-viewer'
 
 interface BeforeAfterComparisonProps {
@@ -23,8 +24,16 @@ const isVideo = (url: string) => url.match(/\.(mp4|webm|ogg|mov|qt|avi|wmv|flv|m
 function VideoThumbnail({ url, onClick }: { url: string; onClick: () => void }) {
     const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(true)
+    const [currentUrl, setCurrentUrl] = useState(url)
+    const [isRetrying, setIsRetrying] = useState(false)
     const videoRef = useRef<HTMLVideoElement>(null)
     const canvasRef = useRef<HTMLCanvasElement>(null)
+    const supabase = createClient()
+
+    useEffect(() => {
+        setCurrentUrl(url)
+        setIsRetrying(false)
+    }, [url])
 
     useEffect(() => {
         const video = videoRef.current
@@ -62,11 +71,37 @@ function VideoThumbnail({ url, onClick }: { url: string; onClick: () => void }) 
             generateThumbnail()
         }
 
-        const handleError = () => {
-            console.error('Video load error', url)
+        const handleError = async () => {
+            if (isRetrying || currentUrl !== url) return
+            
+            setIsRetrying(true)
+            console.error('Video load error', currentUrl)
+
+            try {
+                // Try to extract path from Supabase Public URL and use signed URL
+                const match = currentUrl.match(/\/storage\/v1\/object\/public\/applications\/(.+)$/)
+                if (match && match[1]) {
+                    const path = decodeURIComponent(match[1])
+                    const { data, error: signedError } = await supabase.storage
+                        .from('applications')
+                        .createSignedUrl(path, 3600)
+
+                    if (!signedError && data?.signedUrl) {
+                        console.log('Recovered video with signed URL')
+                        setCurrentUrl(data.signedUrl)
+                        setIsRetrying(false)
+                        return
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to recover video:', e)
+            }
+
+            setIsRetrying(false)
             setIsLoading(false)
         }
 
+        video.src = currentUrl
         video.addEventListener('loadeddata', handleLoadedData)
         video.addEventListener('seeked', handleSeeked)
         video.addEventListener('error', handleError)
@@ -76,7 +111,7 @@ function VideoThumbnail({ url, onClick }: { url: string; onClick: () => void }) 
             video.removeEventListener('seeked', handleSeeked)
             video.removeEventListener('error', handleError)
         }
-    }, [url])
+    }, [currentUrl, url, isRetrying])
 
 
 
@@ -131,10 +166,18 @@ function MediaItem({
     explicitType?: string
     onClick: () => void
 }) {
-    // If it looks like an image, try image first. If it fails, fallback to video.
-    // If explicitly video or looks like video, strict video.
-    const initialIsVideo = explicitType === 'video' || (!explicitType && !isImage(url))
+    // Use explicitType if provided, otherwise detect from URL
+    const isExplicitlyImage = explicitType === 'image'
+    const isExplicitlyVideo = explicitType === 'video'
+    
+    // If explicit type is provided, use it strictly
+    // Otherwise, try to detect from URL
+    const initialIsVideo = isExplicitlyVideo || (!isExplicitlyImage && !isImage(url))
     const [renderAsVideo, setRenderAsVideo] = useState(initialIsVideo)
+    const [hasError, setHasError] = useState(false)
+
+    // Don't allow fallback if explicit type is provided
+    const allowFallback = !explicitType
 
     return (
         <div
@@ -149,8 +192,13 @@ function MediaItem({
                     alt={`미디어 ${index + 1}`}
                     className="w-full h-full object-cover rounded-lg group-hover:opacity-90 transition-opacity"
                     onError={() => {
-                        console.log('Image load failed, switching to video fallback', url)
-                        setRenderAsVideo(true)
+                        if (allowFallback && !hasError) {
+                            console.log('Image load failed, switching to video fallback', url)
+                            setHasError(true)
+                            setRenderAsVideo(true)
+                        } else {
+                            console.error('Image load failed and fallback not allowed or already tried', url)
+                        }
                     }}
                 />
             )}

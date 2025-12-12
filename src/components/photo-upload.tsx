@@ -128,8 +128,16 @@ function VideoThumbnailMedia({
 }) {
     const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(true)
+    const [currentUrl, setCurrentUrl] = useState(url)
+    const [isRetrying, setIsRetrying] = useState(false)
     const videoRef = useRef<HTMLVideoElement>(null)
     const canvasRef = useRef<HTMLCanvasElement>(null)
+    const supabase = createClient()
+
+    useEffect(() => {
+        setCurrentUrl(url)
+        setIsRetrying(false)
+    }, [url])
 
     useEffect(() => {
         const video = videoRef.current
@@ -170,21 +178,54 @@ function VideoThumbnailMedia({
             generateThumbnail()
         }
 
+        const handleError = async () => {
+            if (isRetrying || currentUrl !== url) return
+            
+            setIsRetrying(true)
+            console.error('Video load error', currentUrl)
+
+            try {
+                const match = currentUrl.match(/\/storage\/v1\/object\/public\/applications\/(.+)$/)
+                if (match && match[1]) {
+                    const path = decodeURIComponent(match[1])
+                    const { data, error: signedError } = await supabase.storage
+                        .from('applications')
+                        .createSignedUrl(path, 3600)
+
+                    if (!signedError && data?.signedUrl) {
+                        console.log('Recovered video with signed URL')
+                        setCurrentUrl(data.signedUrl)
+                        setIsRetrying(false)
+                        return
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to recover video:', e)
+            }
+
+            setIsRetrying(false)
+            setIsLoading(false)
+            onError?.()
+        }
+
+        video.src = currentUrl
         video.addEventListener('loadeddata', handleLoadedData)
         video.addEventListener('seeked', handleSeeked)
+        video.addEventListener('error', handleError)
 
         return () => {
             video.removeEventListener('loadeddata', handleLoadedData)
             video.removeEventListener('seeked', handleSeeked)
+            video.removeEventListener('error', handleError)
         }
-    }, [url, controls])
+    }, [currentUrl, url, controls, isRetrying, onError])
 
     if (controls) {
         return (
             <div className="relative w-full h-full flex items-center justify-center">
                 <video
                     ref={videoRef}
-                    src={url}
+                    src={currentUrl}
                     className={className}
                     controls
                     onClick={onClick}
@@ -200,12 +241,10 @@ function VideoThumbnailMedia({
         <div className="relative w-full h-full flex items-center justify-center">
             <video
                 ref={videoRef}
-                src={url}
                 className="hidden"
                 muted
                 preload="metadata"
                 playsInline
-                onError={onError}
             />
             <canvas ref={canvasRef} className="hidden" />
             {thumbnailUrl ? (

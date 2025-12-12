@@ -167,13 +167,11 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
             const totalFiles = beforeMediaFiles.length + afterMediaFiles.length
             let uploadedCount = 0
 
-            // 1. Upload BEFORE media files to Supabase Storage
-            const beforeMediaUrls: string[] = []
-
-            for (const file of beforeMediaFiles) {
+            // Helper function to upload a single file
+            const uploadFile = async (file: File, folder: 'before' | 'after'): Promise<string> => {
                 const fileExt = file.name.split('.').pop()
                 const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
-                const filePath = `before/${completingApp.id}/${fileName}`
+                const filePath = `${folder}/${completingApp.id}/${fileName}`
 
                 const { data, error: uploadError } = await supabase.storage
                     .from('applications')
@@ -188,39 +186,61 @@ export default function ApplicationList({ initialApplications, isAdmin = false }
                     .from('applications')
                     .getPublicUrl(data.path)
 
-                beforeMediaUrls.push(publicUrl)
-
-                // Update progress
-                uploadedCount++
-                onProgress?.(uploadedCount, totalFiles)
+                return publicUrl
             }
 
-            // 2. Upload AFTER media files to Supabase Storage
-            const afterMediaUrls: string[] = []
-
-            for (const file of afterMediaFiles) {
-                const fileExt = file.name.split('.').pop()
-                const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
-                const filePath = `after/${completingApp.id}/${fileName}`
-
-                const { data, error: uploadError } = await supabase.storage
-                    .from('applications')
-                    .upload(filePath, file, {
-                        cacheControl: '3600',
-                        upsert: false
+            // 1. Upload BEFORE media files to Supabase Storage (parallel with progress tracking)
+            const beforeUploadPromises = beforeMediaFiles.map((file, index) => 
+                uploadFile(file, 'before')
+                    .then(url => {
+                        uploadedCount++
+                        onProgress?.(uploadedCount, totalFiles)
+                        return { index, url, success: true as const }
                     })
+                    .catch(error => {
+                        uploadedCount++
+                        onProgress?.(uploadedCount, totalFiles)
+                        return { index, error, success: false as const }
+                    })
+            )
+            
+            const beforeResults = await Promise.all(beforeUploadPromises)
+            const beforeMediaUrls: string[] = []
+            
+            for (const result of beforeResults) {
+                if (result.success) {
+                    beforeMediaUrls.push(result.url)
+                } else {
+                    console.error('Failed to upload before file:', result.error)
+                    throw result.error
+                }
+            }
 
-                if (uploadError) throw uploadError
-
-                const { data: { publicUrl } } = supabase.storage
-                    .from('applications')
-                    .getPublicUrl(data.path)
-
-                afterMediaUrls.push(publicUrl)
-
-                // Update progress
-                uploadedCount++
-                onProgress?.(uploadedCount, totalFiles)
+            // 2. Upload AFTER media files to Supabase Storage (parallel with progress tracking)
+            const afterUploadPromises = afterMediaFiles.map((file, index) => 
+                uploadFile(file, 'after')
+                    .then(url => {
+                        uploadedCount++
+                        onProgress?.(uploadedCount, totalFiles)
+                        return { index, url, success: true as const }
+                    })
+                    .catch(error => {
+                        uploadedCount++
+                        onProgress?.(uploadedCount, totalFiles)
+                        return { index, error, success: false as const }
+                    })
+            )
+            
+            const afterResults = await Promise.all(afterUploadPromises)
+            const afterMediaUrls: string[] = []
+            
+            for (const result of afterResults) {
+                if (result.success) {
+                    afterMediaUrls.push(result.url)
+                } else {
+                    console.error('Failed to upload after file:', result.error)
+                    throw result.error
+                }
             }
 
             // 3. Update application with BEFORE/AFTER data and completion status
