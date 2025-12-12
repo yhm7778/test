@@ -107,7 +107,7 @@ const SupabaseMedia = memo(({
     }
 
     if (mediaType === 'video') {
-        return <VideoThumbnailMedia url={currentUrl} className={className} controls={controls} onClick={onClick} onError={handleError} />
+        return <VideoThumbnailMedia url={url} className={className} controls={controls} onClick={onClick} onError={handleError} />
     }
 
     return (
