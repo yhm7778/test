@@ -148,6 +148,7 @@ const VideoThumbnail = memo(function VideoThumbnail({ url, onClick }: { url: str
                 muted
                 preload="metadata"
                 playsInline
+                crossOrigin="anonymous"
             />
             <canvas ref={canvasRef} className="hidden" />
             {thumbnailUrl ? (

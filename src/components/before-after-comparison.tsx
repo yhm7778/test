@@ -399,10 +399,10 @@ export default function BeforeAfterComparison({
             {
                 viewerOpen && (
 
-                    <MediaViewer
-                        mediaUrls={viewerUrls}
-                        initialIndex={viewerIndex}
-                        onClose={() => setViewerOpen(false)}
+                <MediaViewer
+                    mediaUrls={viewerUrls}
+                    initialIndex={viewerIndex}
+                    onClose={() => setViewerOpen(false)}
                         mediaTypes={viewerUrls.map((url, i) => {
                             const originalIndex = activeTab === 'before'
                                 ? beforeMediaUrls!.indexOf(url) // Note: This might be inaccurate if duplicates exist, but sufficient for type lookup usually
@@ -414,7 +414,7 @@ export default function BeforeAfterComparison({
 
                             return isImage(url) ? 'image' : 'video'
                         })}
-                    />
+                />
                 )
             }
         </div >

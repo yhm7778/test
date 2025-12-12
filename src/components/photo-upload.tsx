@@ -258,13 +258,13 @@ const VideoThumbnailMedia = memo(function VideoThumbnailMedia({
     if (controls) {
         if (!currentUrl) {
             return (
-                <div className={`${className} bg-gray-800 flex items-center justify-center`}>
+                <div className={`${className} bg-gray-800 flex items-center justify-center rounded-lg`}>
                     <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
                 </div>
             )
         }
         return (
-            <div className="relative w-full h-full flex items-center justify-center">
+            <div className="relative w-full h-full flex items-center justify-center rounded-lg overflow-hidden">
                 <video
                     ref={videoRef}
                     src={currentUrl}
@@ -274,19 +274,21 @@ const VideoThumbnailMedia = memo(function VideoThumbnailMedia({
                     onError={onError}
                     preload="metadata"
                     playsInline
+                    crossOrigin="anonymous"
                 />
             </div>
         )
     }
 
     return (
-        <div className="relative w-full h-full flex items-center justify-center">
+        <div className="relative w-full h-full flex items-center justify-center rounded-lg overflow-hidden">
             <video
                 ref={videoRef}
                 className="hidden"
                 muted
                 preload="metadata"
                 playsInline
+                crossOrigin="anonymous"
             />
             <canvas ref={canvasRef} className="hidden" />
             {thumbnailUrl ? (
@@ -297,7 +299,7 @@ const VideoThumbnailMedia = memo(function VideoThumbnailMedia({
                     onClick={onClick}
                 />
             ) : (
-                <div className={`${className} bg-gray-800 flex items-center justify-center`}>
+                <div className={`${className} bg-gray-800 flex items-center justify-center rounded-lg`}>
                     {isLoading ? (
                         <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
                     ) : (
