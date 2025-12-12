@@ -11,24 +11,8 @@ interface BeforeAfterComparisonProps {
     afterMediaUrls: string[] | null
 }
 
-export default function BeforeAfterComparison({
-    beforeContent,
-    afterContent,
-    beforeMediaUrls,
-    afterMediaUrls
-}: BeforeAfterComparisonProps) {
-    const [activeTab, setActiveTab] = useState<'before' | 'after'>('before')
-    const [viewerOpen, setViewerOpen] = useState(false)
-    const [viewerUrls, setViewerUrls] = useState<string[]>([])
-    const [viewerIndex, setViewerIndex] = useState(0)
-
-    const openViewer = (urls: string[], index: number) => {
-        setViewerUrls(urls)
-        setViewerIndex(index)
-        setViewerOpen(true)
-    }
-
-    const isVideo = (url: string) => url.match(/\.(mp4|webm|ogg|mov|qt|avi|wmv|flv|m4v)(\?|$)/i)
+// Helper function to check if URL is a video
+const isVideo = (url: string) => url.match(/\.(mp4|webm|ogg|mov|qt|avi|wmv|flv|m4v)(\?|$)/i)
 
 // Video thumbnail component with canvas-based preview
 function VideoThumbnail({ url, onClick }: { url: string; onClick: () => void }) {
@@ -115,6 +99,23 @@ function VideoThumbnail({ url, onClick }: { url: string; onClick: () => void }) 
         </div>
     )
 }
+
+export default function BeforeAfterComparison({
+    beforeContent,
+    afterContent,
+    beforeMediaUrls,
+    afterMediaUrls
+}: BeforeAfterComparisonProps) {
+    const [activeTab, setActiveTab] = useState<'before' | 'after'>('before')
+    const [viewerOpen, setViewerOpen] = useState(false)
+    const [viewerUrls, setViewerUrls] = useState<string[]>([])
+    const [viewerIndex, setViewerIndex] = useState(0)
+
+    const openViewer = (urls: string[], index: number) => {
+        setViewerUrls(urls)
+        setViewerIndex(index)
+        setViewerOpen(true)
+    }
 
     const hasBeforeData = beforeContent || (beforeMediaUrls && beforeMediaUrls.length > 0)
     const hasAfterData = afterContent || (afterMediaUrls && afterMediaUrls.length > 0)
