@@ -307,11 +307,6 @@ const VideoThumbnailMedia = memo(function VideoThumbnailMedia({
                     )}
                 </div>
             )}
-            <div className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none">
-                <div className="bg-black/50 rounded-full p-3 backdrop-blur-sm">
-                    <Play className="h-6 w-6 text-white fill-white" />
-                </div>
-            </div>
         </div>
     )
 }, (prevProps, nextProps) => {
