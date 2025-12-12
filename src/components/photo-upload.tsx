@@ -147,15 +147,22 @@ const VideoThumbnailMedia = memo(function VideoThumbnailMedia({
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const supabaseRef = useRef(createClient())
     const urlProcessedRef = useRef<string | null>(null)
+    const thumbnailGeneratedRef = useRef<string | null>(null) // Track which URL has already generated thumbnail
 
     // Pre-generate signed URL on mount for better performance
     useEffect(() => {
-        // Skip if already processed this URL
-        if (urlProcessedRef.current === url && currentUrl) {
+        // Skip if already processed this URL and have thumbnail
+        if (urlProcessedRef.current === url && thumbnailGeneratedRef.current === url && thumbnailUrl) {
             return
         }
 
-        urlProcessedRef.current = url
+        // Reset thumbnail if URL changed
+        if (urlProcessedRef.current !== url) {
+            urlProcessedRef.current = url
+            thumbnailGeneratedRef.current = null
+            setThumbnailUrl(null)
+            setIsLoading(true)
+        }
 
         const generateSignedUrl = async () => {
             // Check cache first
@@ -190,15 +197,16 @@ const VideoThumbnailMedia = memo(function VideoThumbnailMedia({
         }
 
         generateSignedUrl()
-    }, [url]) // Remove supabase from dependencies
+    }, [url]) // Only depend on url
 
     useEffect(() => {
         const video = videoRef.current
         const canvas = canvasRef.current
         if (!video || !canvas || !currentUrl) return
 
-        // Don't reload if video src is already set to currentUrl
-        if (video.src && video.src === currentUrl && thumbnailUrl) {
+        // Skip if thumbnail already generated for this URL
+        if (thumbnailGeneratedRef.current === currentUrl && thumbnailUrl) {
+            setIsLoading(false)
             return
         }
 
@@ -212,6 +220,7 @@ const VideoThumbnailMedia = memo(function VideoThumbnailMedia({
                         ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
                         const dataUrl = canvas.toDataURL('image/jpeg', 0.8)
                         setThumbnailUrl(dataUrl)
+                        thumbnailGeneratedRef.current = currentUrl
                         setIsLoading(false)
                         return
                     }
@@ -239,21 +248,23 @@ const VideoThumbnailMedia = memo(function VideoThumbnailMedia({
             onError?.()
         }
 
-        // Only set src if it's different
-        if (video.src !== currentUrl) {
-            video.src = currentUrl
+        // Only set src and attach listeners if thumbnail not already generated
+        if (thumbnailGeneratedRef.current !== currentUrl) {
+            if (video.src !== currentUrl) {
+                video.src = currentUrl
+            }
+            
+            video.addEventListener('loadeddata', handleLoadedData)
+            video.addEventListener('seeked', handleSeeked)
+            video.addEventListener('error', handleError)
         }
-        
-        video.addEventListener('loadeddata', handleLoadedData)
-        video.addEventListener('seeked', handleSeeked)
-        video.addEventListener('error', handleError)
 
         return () => {
             video.removeEventListener('loadeddata', handleLoadedData)
             video.removeEventListener('seeked', handleSeeked)
             video.removeEventListener('error', handleError)
         }
-    }, [currentUrl, thumbnailUrl]) // Add thumbnailUrl to prevent unnecessary reloads
+    }, [currentUrl]) // Only depend on currentUrl, not thumbnailUrl
 
     if (controls) {
         if (!currentUrl) {
@@ -314,9 +325,149 @@ const VideoThumbnailMedia = memo(function VideoThumbnailMedia({
     return prevProps.url === nextProps.url
 })
 
+// Component for handling File objects (newly uploaded files)
+const FileVideoThumbnail = memo(function FileVideoThumbnail({ file, className, onClick }: { file: File; className?: string; onClick?: () => void }) {
+    const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null)
+    const [isLoading, setIsLoading] = useState(true)
+    const [objectUrl, setObjectUrl] = useState<string | null>(null)
+    const videoRef = useRef<HTMLVideoElement>(null)
+    const canvasRef = useRef<HTMLCanvasElement>(null)
+    const thumbnailGeneratedRef = useRef(false)
+
+    // Create and memoize blob URL
+    useEffect(() => {
+        const url = URL.createObjectURL(file)
+        setObjectUrl(url)
+        return () => {
+            URL.revokeObjectURL(url)
+        }
+    }, [file])
+
+    useEffect(() => {
+        const video = videoRef.current
+        const canvas = canvasRef.current
+        if (!video || !canvas || !objectUrl) return
+
+        // Skip if thumbnail already generated
+        if (thumbnailGeneratedRef.current && thumbnailUrl) {
+            setIsLoading(false)
+            return
+        }
+
+        const generateThumbnail = () => {
+            try {
+                if (video.readyState >= 2 && video.videoWidth > 0) {
+                    canvas.width = video.videoWidth
+                    canvas.height = video.videoHeight
+                    const ctx = canvas.getContext('2d')
+                    if (ctx) {
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+                        const dataUrl = canvas.toDataURL('image/jpeg', 0.8)
+                        setThumbnailUrl(dataUrl)
+                        thumbnailGeneratedRef.current = true
+                        setIsLoading(false)
+                        return
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to generate thumbnail:', error)
+            } finally {
+                setIsLoading(false)
+            }
+        }
+
+        const handleLoadedData = () => {
+            if (video.duration > 0) {
+                video.currentTime = Math.min(0.5, video.duration * 0.1)
+            }
+        }
+
+        const handleSeeked = () => {
+            generateThumbnail()
+        }
+
+        const handleError = () => {
+            console.error('Video load error', objectUrl)
+            setIsLoading(false)
+        }
+
+        if (!thumbnailGeneratedRef.current) {
+            video.src = objectUrl
+            video.addEventListener('loadeddata', handleLoadedData)
+            video.addEventListener('seeked', handleSeeked)
+            video.addEventListener('error', handleError)
+        }
+
+        return () => {
+            video.removeEventListener('loadeddata', handleLoadedData)
+            video.removeEventListener('seeked', handleSeeked)
+            video.removeEventListener('error', handleError)
+        }
+    }, [objectUrl])
+
+    return (
+        <div className="relative w-full h-full rounded-lg overflow-hidden">
+            <video
+                ref={videoRef}
+                className="hidden"
+                muted
+                preload="metadata"
+                playsInline
+                crossOrigin="anonymous"
+            />
+            <canvas ref={canvasRef} className="hidden" />
+            {thumbnailUrl ? (
+                <img
+                    src={thumbnailUrl}
+                    alt="Video thumbnail"
+                    className={className}
+                    onClick={onClick}
+                />
+            ) : (
+                <div className={`${className} bg-gray-800 flex items-center justify-center rounded-lg`}>
+                    {isLoading ? (
+                        <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
+                    ) : (
+                        <FileVideo className="w-6 h-6 text-gray-400" />
+                    )}
+                </div>
+            )}
+        </div>
+    )
+}, (prevProps, nextProps) => {
+    // Only re-render if file object reference changes
+    return prevProps.file === nextProps.file
+})
+
 export default function PhotoUpload({ photos, setPhotos, initialUrls = [], readOnly = false, photosOnly = false, minFiles, maxFiles }: PhotoUploadProps) {
     const [isDragging, setIsDragging] = useState(false)
     const [selectedImage, setSelectedImage] = useState<string | null>(null) // For popup
+    const blobUrlMapRef = useRef<Map<File, string>>(new Map())
+
+    // Clean up blob URLs when photos change
+    useEffect(() => {
+        const currentFiles = new Set(photos)
+        const map = blobUrlMapRef.current
+        
+        // Revoke URLs for files that are no longer in the photos array
+        for (const [file, url] of map.entries()) {
+            if (!currentFiles.has(file)) {
+                URL.revokeObjectURL(url)
+                map.delete(file)
+            }
+        }
+    }, [photos])
+
+    // Clean up all blob URLs on unmount
+    useEffect(() => {
+        return () => {
+            const map = blobUrlMapRef.current
+            for (const url of map.values()) {
+                URL.revokeObjectURL(url)
+            }
+            map.clear()
+        }
+    }, [])
 
     const handleDragOver = useCallback((e: React.DragEvent) => {
         if (readOnly) return
@@ -436,40 +587,66 @@ export default function PhotoUpload({ photos, setPhotos, initialUrls = [], readO
                         </div>
                     ))}
 
-                    {photos.map((photo, index) => (
-                        <div key={`file-${index}`} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 group">
-                            {photo.type.startsWith('video/') ? (
-                                <video
-                                    src={URL.createObjectURL(photo)}
-                                    className="w-full h-full object-cover rounded-lg"
-                                    controls
-                                />
-                            ) : (
-                                <img
-                                    src={URL.createObjectURL(photo)}
-                                    alt={`Preview ${index + 1}`}
-                                    className="w-full h-full object-cover rounded-lg"
-                                />
-                            )}
-                            {!readOnly && (
-                                <button
-                                    type="button"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        removePhoto(index);
-                                    }}
-                                    className="absolute top-1 right-1 p-1 bg-white rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
-                                    aria-label="사진 삭제"
-                                >
-                                    <X className="h-4 w-4 text-gray-500" />
-                                </button>
-                            )}
-                        </div>
-                    ))}
+                    {photos.map((photo, index) => {
+                        // Memoize blob URL for images
+                        let imageUrl: string
+                        if (photo.type.startsWith('image/')) {
+                            if (!blobUrlMapRef.current.has(photo)) {
+                                blobUrlMapRef.current.set(photo, URL.createObjectURL(photo))
+                            }
+                            imageUrl = blobUrlMapRef.current.get(photo)!
+                        }
+
+                        return (
+                            <div key={`file-${photo.name}-${index}`} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 group">
+                                {photo.type.startsWith('video/') ? (
+                                    <FileVideoThumbnail
+                                        file={photo}
+                                        className="w-full h-full object-cover rounded-lg cursor-pointer"
+                                        onClick={() => {
+                                            // Open video in popup
+                                            if (blobUrlMapRef.current.has(photo)) {
+                                                setSelectedImage(blobUrlMapRef.current.get(photo)!)
+                                            } else {
+                                                const url = URL.createObjectURL(photo)
+                                                blobUrlMapRef.current.set(photo, url)
+                                                setSelectedImage(url)
+                                            }
+                                        }}
+                                    />
+                                ) : (
+                                    <img
+                                        src={imageUrl!}
+                                        alt={`Preview ${index + 1}`}
+                                        className="w-full h-full object-cover rounded-lg cursor-pointer"
+                                        onClick={() => setSelectedImage(imageUrl!)}
+                                    />
+                                )}
+                                {!readOnly && (
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            // Clean up blob URL
+                                            if (blobUrlMapRef.current.has(photo)) {
+                                                URL.revokeObjectURL(blobUrlMapRef.current.get(photo)!)
+                                                blobUrlMapRef.current.delete(photo)
+                                            }
+                                            removePhoto(index);
+                                        }}
+                                        className="absolute top-1 right-1 p-1 bg-white rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                                        aria-label="사진 삭제"
+                                    >
+                                        <X className="h-4 w-4 text-gray-500" />
+                                    </button>
+                                )}
+                            </div>
+                        )
+                    })}
                 </div>
             )}
 
-            {/* Image Popup */}
+            {/* Image/Video Popup */}
             {selectedImage && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4" onClick={() => setSelectedImage(null)}>
                     <div className="relative max-w-5xl max-h-[90vh] w-full h-full flex items-center justify-center">
@@ -480,12 +657,21 @@ export default function PhotoUpload({ photos, setPhotos, initialUrls = [], readO
                         >
                             <X className="h-8 w-8" />
                         </button>
-                        <SupabaseMedia
-                            url={selectedImage}
-                            alt="Full size"
-                            className="max-w-full max-h-full object-contain"
-                            controls={true}
-                        />
+                        {selectedImage.startsWith('blob:') ? (
+                            <video
+                                src={selectedImage}
+                                controls
+                                className="max-w-full max-h-full object-contain"
+                                autoPlay
+                            />
+                        ) : (
+                            <SupabaseMedia
+                                url={selectedImage}
+                                alt="Full size"
+                                className="max-w-full max-h-full object-contain"
+                                controls={true}
+                            />
+                        )}
                     </div>
                 </div>
             )}

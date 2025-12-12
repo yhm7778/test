@@ -30,15 +30,22 @@ const VideoThumbnail = memo(function VideoThumbnail({ url, onClick }: { url: str
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const supabaseRef = useRef(createClient())
     const urlProcessedRef = useRef<string | null>(null)
+    const thumbnailGeneratedRef = useRef<string | null>(null) // Track which URL has already generated thumbnail
 
     // Pre-generate signed URL on mount for better performance
     useEffect(() => {
-        // Skip if already processed this URL
-        if (urlProcessedRef.current === url && currentUrl) {
+        // Skip if already processed this URL and have thumbnail
+        if (urlProcessedRef.current === url && thumbnailGeneratedRef.current === url && thumbnailUrl) {
             return
         }
 
-        urlProcessedRef.current = url
+        // Reset thumbnail if URL changed
+        if (urlProcessedRef.current !== url) {
+            urlProcessedRef.current = url
+            thumbnailGeneratedRef.current = null
+            setThumbnailUrl(null)
+            setIsLoading(true)
+        }
 
         const generateSignedUrl = async () => {
             // Check cache first
@@ -73,15 +80,16 @@ const VideoThumbnail = memo(function VideoThumbnail({ url, onClick }: { url: str
         }
 
         generateSignedUrl()
-    }, [url]) // Remove supabase from dependencies
+    }, [url]) // Only depend on url
 
     useEffect(() => {
         const video = videoRef.current
         const canvas = canvasRef.current
         if (!video || !canvas || !currentUrl) return
 
-        // Don't reload if video src is already set to currentUrl
-        if (video.src && video.src === currentUrl && thumbnailUrl) {
+        // Skip if thumbnail already generated for this URL
+        if (thumbnailGeneratedRef.current === currentUrl && thumbnailUrl) {
+            setIsLoading(false)
             return
         }
 
@@ -95,6 +103,7 @@ const VideoThumbnail = memo(function VideoThumbnail({ url, onClick }: { url: str
                         ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
                         const dataUrl = canvas.toDataURL('image/jpeg', 0.8)
                         setThumbnailUrl(dataUrl)
+                        thumbnailGeneratedRef.current = currentUrl
                         setIsLoading(false)
                         return
                     }
@@ -121,21 +130,23 @@ const VideoThumbnail = memo(function VideoThumbnail({ url, onClick }: { url: str
             setIsLoading(false)
         }
 
-        // Only set src if it's different
-        if (video.src !== currentUrl) {
-            video.src = currentUrl
+        // Only set src and attach listeners if thumbnail not already generated
+        if (thumbnailGeneratedRef.current !== currentUrl) {
+            if (video.src !== currentUrl) {
+                video.src = currentUrl
+            }
+            
+            video.addEventListener('loadeddata', handleLoadedData)
+            video.addEventListener('seeked', handleSeeked)
+            video.addEventListener('error', handleError)
         }
-        
-        video.addEventListener('loadeddata', handleLoadedData)
-        video.addEventListener('seeked', handleSeeked)
-        video.addEventListener('error', handleError)
 
         return () => {
             video.removeEventListener('loadeddata', handleLoadedData)
             video.removeEventListener('seeked', handleSeeked)
             video.removeEventListener('error', handleError)
         }
-    }, [currentUrl, thumbnailUrl]) // Add thumbnailUrl to prevent unnecessary reloads
+    }, [currentUrl]) // Only depend on currentUrl, not thumbnailUrl
 
     return (
         <div
