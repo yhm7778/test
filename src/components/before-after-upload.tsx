@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, memo } from 'react'
 import { Upload, X, Loader2, Image as ImageIcon, Video } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 import { getCachedSignedUrl, setCachedSignedUrl } from '@/utils/media-url-cache'
@@ -22,7 +22,7 @@ interface BeforeAfterUploadProps {
 const isVideo = (url: string) => url.match(/\.(mp4|webm|ogg|mov|qt|avi|wmv|flv|m4v)(\?|$)/i)
 
 // Video thumbnail component with canvas-based preview
-function VideoThumbnail({ url, onClick }: { url: string; onClick: () => void }) {
+const VideoThumbnail = memo(function VideoThumbnail({ url, onClick }: { url: string; onClick: () => void }) {
     const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [currentUrl, setCurrentUrl] = useState<string | null>(null)
@@ -172,7 +172,10 @@ function VideoThumbnail({ url, onClick }: { url: string; onClick: () => void }) 
             </div>
         </div>
     )
-}
+}, (prevProps, nextProps) => {
+    // Only re-render if url changes (ignore onClick changes)
+    return prevProps.url === nextProps.url
+})
 
 export default function BeforeAfterUpload({
     type,
@@ -309,7 +312,7 @@ export default function BeforeAfterUpload({
                         {mediaUrls.map((url, index) => (
                             <div key={`media-${url}-${index}`} className="relative group aspect-square">
                                 {(mediaFiles ? mediaFiles[index]?.type.startsWith('video/') : isVideo(url)) ? (
-                                    <VideoThumbnail key={`video-${url}-${index}`} url={url} onClick={() => onMediaClick?.(index)} />
+                                    <VideoThumbnail url={url} onClick={() => onMediaClick?.(index)} />
                                 ) : (
                                     <img
                                         src={url}
