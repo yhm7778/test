@@ -18,6 +18,7 @@ export interface Database {
           created_at: string
           scheduled_deletion_at: string | null
           max_requests: number | null
+          phone: string | null
         }
         Insert: {
           id: string
@@ -27,6 +28,7 @@ export interface Database {
           created_at?: string
           scheduled_deletion_at?: string | null
           max_requests?: number | null
+          phone?: string | null
         }
         Update: {
           id?: string
@@ -36,6 +38,7 @@ export interface Database {
           created_at?: string
           scheduled_deletion_at?: string | null
           max_requests?: number | null
+          phone?: string | null
         }
         Relationships: []
       }

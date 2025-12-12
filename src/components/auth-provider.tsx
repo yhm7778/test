@@ -64,6 +64,7 @@ export function AuthProvider({
             created_at: targetUser.created_at,
             scheduled_deletion_at: null,
             max_requests: null,
+            phone: targetUser.user_metadata?.phone ?? null,
         }
     }
 
@@ -107,6 +108,7 @@ export function AuthProvider({
                     created_at: session.user.created_at,
                     scheduled_deletion_at: null,
                     max_requests: null,
+                    phone: session.user.user_metadata?.phone ?? null,
                 }
                 : null
 

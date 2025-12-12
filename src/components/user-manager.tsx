@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Database } from '@/types/supabase'
 import { format, parseISO } from 'date-fns'
-import { Loader2, Save, Search, User, RefreshCw, Plus, X, Settings } from 'lucide-react'
+import { Loader2, Save, Search, User, RefreshCw, Plus, X, Settings, Pencil } from 'lucide-react'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 
-import { updateUserLimit, getClients, createClientAccount } from '@/app/actions/admin'
+import { updateUserLimit, getClients, createClientAccount, updateUserInfo } from '@/app/actions/admin'
 
 export default function UserManager() {
     const [profiles, setProfiles] = useState<Profile[]>([])
@@ -23,6 +23,14 @@ export default function UserManager() {
     const [newUserPhone, setNewUserPhone] = useState('')
     const [isCreating, setIsCreating] = useState(false)
     const [isAccountManagerOpen, setIsAccountManagerOpen] = useState(false)
+
+    // Edit User Modal State
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+    const [editingUser, setEditingUser] = useState<Profile | null>(null)
+    const [editName, setEditName] = useState('')
+    const [editPhone, setEditPhone] = useState('')
+    const [editPassword, setEditPassword] = useState('')
+    const [isUpdating, setIsUpdating] = useState(false)
 
     const fetchProfiles = useCallback(async () => {
         setIsLoading(true)
@@ -277,7 +285,20 @@ export default function UserManager() {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            {/* 기존 관리 버튼 영역 */}
+                                            <button
+                                                onClick={() => {
+                                                    setEditingUser(profile)
+                                                    setEditName(profile.username || '')
+                                                    setEditPhone(profile.phone || '')
+                                                    setEditPassword('')
+                                                    setIsEditModalOpen(true)
+                                                }}
+                                                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                                                title="사용자 정보 수정"
+                                            >
+                                                <Pencil className="h-3.5 w-3.5" />
+                                                수정
+                                            </button>
                                         </td>
                                     </tr>
                                 ))
@@ -394,6 +415,130 @@ export default function UserManager() {
                                 </button>
                             </div>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit User Modal */}
+            {isEditModalOpen && editingUser && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                            <h3 className="font-semibold text-gray-900">사용자 정보 수정</h3>
+                            <button
+                                onClick={() => {
+                                    setIsEditModalOpen(false)
+                                    setEditingUser(null)
+                                    setEditName('')
+                                    setEditPhone('')
+                                    setEditPassword('')
+                                }}
+                                className="text-gray-400 hover:text-gray-500"
+                                aria-label="닫기"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={async (e) => {
+                            e.preventDefault()
+                            if (!editingUser) return
+
+                            setIsUpdating(true)
+                            try {
+                                const updates: { name?: string; phone?: string; password?: string } = {}
+                                
+                                if (editName !== editingUser.username) {
+                                    updates.name = editName
+                                }
+                                if (editPhone !== editingUser.phone) {
+                                    updates.phone = editPhone
+                                }
+                                if (editPassword.trim()) {
+                                    updates.password = editPassword
+                                }
+
+                                if (Object.keys(updates).length === 0) {
+                                    alert('변경된 내용이 없습니다.')
+                                    setIsUpdating(false)
+                                    return
+                                }
+
+                                const result = await updateUserInfo(editingUser.id, updates)
+                                if (result.error) throw new Error(result.error)
+
+                                alert('사용자 정보가 수정되었습니다.')
+                                setIsEditModalOpen(false)
+                                setEditingUser(null)
+                                setEditName('')
+                                setEditPhone('')
+                                setEditPassword('')
+                                fetchProfiles() // Refresh list
+                            } catch (error: unknown) {
+                                const message = error instanceof Error ? error.message : 'Unknown error'
+                                alert(`수정 실패: ${message}`)
+                            } finally {
+                                setIsUpdating(false)
+                            }
+                        }} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">이름</label>
+                                <input
+                                    type="text"
+                                    className="input-field w-full"
+                                    value={editName}
+                                    onChange={(e) => setEditName(e.target.value)}
+                                    placeholder="사용자 이름"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">전화번호</label>
+                                <input
+                                    type="tel"
+                                    className="input-field w-full"
+                                    value={editPhone}
+                                    onChange={(e) => setEditPhone(e.target.value)}
+                                    placeholder="010-1234-5678"
+                                />
+                                <p className="mt-1 text-xs text-gray-500">알림톡 수신용 전화번호</p>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">비밀번호 (변경 시에만 입력)</label>
+                                <input
+                                    type="password"
+                                    className="input-field w-full"
+                                    value={editPassword}
+                                    onChange={(e) => setEditPassword(e.target.value)}
+                                    placeholder="새 비밀번호 (6자 이상)"
+                                />
+                                <p className="mt-1 text-xs text-gray-500">비밀번호를 변경하지 않으려면 비워두세요</p>
+                            </div>
+
+                            <div className="pt-2 flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setIsEditModalOpen(false)
+                                        setEditingUser(null)
+                                        setEditName('')
+                                        setEditPhone('')
+                                        setEditPassword('')
+                                    }}
+                                    className="btn-secondary flex-1"
+                                    disabled={isUpdating}
+                                >
+                                    취소
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={isUpdating}
+                                    className="btn-primary flex-1 flex items-center justify-center gap-2"
+                                >
+                                    {isUpdating && <Loader2 className="h-4 w-4 animate-spin" />}
+                                    수정
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

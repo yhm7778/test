@@ -179,6 +179,79 @@ export async function createClientAccount(userId: string, password: string, name
     return { success: true }
 }
 
+export async function updateUserInfo(userId: string, updates: { name?: string; phone?: string; password?: string }) {
+    const supabase = await createClient()
+
+    // Check admin
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'Unauthorized' }
+
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+
+    if (!profile || (profile.role !== 'admin' && profile.role !== 'staff')) {
+        return { error: 'Unauthorized' }
+    }
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    
+    if (!supabaseUrl) {
+        return { error: 'Server configuration error: NEXT_PUBLIC_SUPABASE_URL is missing. Please check your .env.local file.' }
+    }
+    
+    if (!serviceRoleKey) {
+        return { error: 'Server configuration error: SUPABASE_SERVICE_ROLE_KEY is missing. Please check your .env.local file.' }
+    }
+
+    const adminSupabase = createSupabaseClient<Database>(
+        supabaseUrl,
+        serviceRoleKey,
+        {
+            auth: {
+                autoRefreshToken: false,
+                persistSession: false
+            }
+        }
+    )
+
+    // Update password if provided
+    if (updates.password) {
+        const { error: passwordError } = await adminSupabase.auth.admin.updateUserById(
+            userId,
+            { password: updates.password }
+        )
+        if (passwordError) {
+            return { error: `비밀번호 업데이트 실패: ${passwordError.message}` }
+        }
+    }
+
+    // Update profile (name and phone)
+    const profileUpdates: { username?: string; phone?: string } = {}
+    if (updates.name !== undefined) {
+        profileUpdates.username = updates.name
+    }
+    if (updates.phone !== undefined) {
+        profileUpdates.phone = updates.phone
+    }
+
+    if (Object.keys(profileUpdates).length > 0) {
+        const { error: profileError } = await adminSupabase
+            .from('profiles')
+            .update(profileUpdates)
+            .eq('id', userId)
+
+        if (profileError) {
+            return { error: `프로필 업데이트 실패: ${profileError.message}` }
+        }
+    }
+
+    return { success: true }
+}
+
 /**
  * Update application status and send notification if completed
  */
